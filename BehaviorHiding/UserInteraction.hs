@@ -1,7 +1,7 @@
-module UserInteraction(parse) where
+module BehaviorHiding.UserInteraction(parse) where
 
 -- User Interaction module uses Functionality module
-import Functionality
+import BehaviorHiding.Functionality
 
 validCommands :: [String]
 validCommands = ["init", "clone", "add", "remove", "status", "heads", "diff", "cat", "checkout", "commit", "log", "merge", "pull", "push"]

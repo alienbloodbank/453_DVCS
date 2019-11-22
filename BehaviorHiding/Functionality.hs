@@ -1,4 +1,4 @@
-module Functionality(performInit, 
+module BehaviorHiding.Functionality(performInit, 
 performClone, 
 performAdd, 
 performRemove, 

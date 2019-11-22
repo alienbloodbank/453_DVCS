@@ -10,4 +10,6 @@ dvcs: $(SOURCES)
 	$(GHC) $(DRIVER)
 
 clean:
-	rm -f $(OBJECTS) $(TARGET)
+	rm -f $(TARGET)
+	find . -name \*.hi -type f -delete
+	find . -name \*.o -type f -delete
