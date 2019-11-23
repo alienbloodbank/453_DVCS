@@ -19,12 +19,12 @@ process "clone" args = do
 process "add" args = do
    if args == [] then return "Nothing specified, nothing added."
    else do 
-     msg <- performAdd args
+     msg <- performAdd (args !! 0)
      return msg
 process "remove" args = do
    if args == [] then return "usage: dvcs rm <file>..."
    else do 
-     msg <- performRemove args
+     msg <- performRemove (args !! 0)
      return msg
 process "status" args = do 
    msg <- performStatus

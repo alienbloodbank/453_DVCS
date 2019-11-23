@@ -12,24 +12,14 @@ performCat,
 performPull,
 performPush) where
 
-import System.Directory (doesDirectoryExist, createDirectory, getCurrentDirectory, copyFile, doesFileExist, doesPathExist, listDirectory)
+import System.Directory (doesDirectoryExist, getCurrentDirectory, doesFileExist, doesPathExist, listDirectory)
 import System.Environment
 import System.Process
 import Data.List
 
-import SoftwareDecision.Concept.TrackedSet (addFile, removeFile, getTracketSet)
+import SoftwareDecision.Concept.TrackedSet (addFile, removeFile, getTrackedSet)
+import SoftwareDecision.Concept.Repo (createRepo)
 
--- HELPER FUNCTION 1 --
-areFilesValid :: [String] -> IO Bool
-areFilesValid files = do
-   if files == [] then return True
-   else do
-      let (file:res) = files
-      doesExist <- doesFileExist file
-      if not(doesExist) then return False
-      else do
-        areValid <- areFilesValid res
-        return areValid
 
 performInit :: IO String
 performInit = do
@@ -37,10 +27,8 @@ performInit = do
    cd <- getCurrentDirectory
    if doesExist then return ("Reinitialized existing dvcs repository in " ++ cd)
    else do
-      createDirectory "./.dvcs"
+      createRepo
       -- create root commit
-      writeFile "./.dvcs/repometadata.json" "{\"pid\":\"<pid>\",\"ts\":[], \"head_\":\"root\"}"
-      writeFile "./.dvcs/repometadatatemp.json" "" 
       return "Initialized repo"
 
 ------------------------------------
@@ -55,53 +43,38 @@ performClone repo_path = do
      return "Cloned remote repo"
 
 ------------------------------------
--- HELPER FUNCTION 2 --
-addfiles :: [String] -> IO ()
-addfiles files = do
-   if files == [] then return ()
-   else do
-     let (file:res) = files
-     addFile file
-     copyFile "./.dvcs/repometadatatemp.json" "./.dvcs/repometadata.json"
-     addfiles res
-
-performAdd :: [String] -> IO String
-performAdd files = do
+performAdd :: String -> IO String
+performAdd file = do
    doesExist <- doesDirectoryExist "./.dvcs"
    if not(doesExist) then return "fatal: not a dvcs repository .dvcs"
    else do
-     areValid <- areFilesValid files
-     if not(areValid) then return "fatal: some files do not exist in CD"
+     inCD <- doesFileExist file
+     trackedFiles <- getTrackedSet
+     if not(inCD) then do
+       if (file `notElem` trackedFiles) then return "fatal: File does not exist in CD" 
+       else do
+         removeFile file
+         return "File removed as its not in CD"  
      else do
-       addfiles files
-       return "Files added"
+       addFile file
+       return "File added"
 
 ------------------------------------
--- HELPER FUNCTION 2 --
-rmfiles :: [String] -> IO ()
-rmfiles files = do
-   if files == [] then return ()
-   else do
-     let (file:res) = files
-     removeFile file
-     copyFile "./.dvcs/repometadatatemp.json" "./.dvcs/repometadata.json"
-     rmfiles res
-
-performRemove :: [String] -> IO String
-performRemove files = do
+performRemove :: String -> IO String
+performRemove file = do
    doesExist <- doesDirectoryExist "./.dvcs"
    if not(doesExist) then return "fatal: not a dvcs repository .dvcs"
    else do
-     areValid <- areFilesValid files
-     if not(areValid) then return "fatal: some files do not exist in CD"
+     trackedFiles <- getTrackedSet
+     if (file `notElem` trackedFiles) then return "Error: File not being tracked. Nothing to remove"
      else do
-       rmfiles files
-       return "Files removed"
+         removeFile file
+         return "File removed"
 
 ------------------------------------
 performStatus :: IO String
 performStatus = do 
-   trackedFiles <- getTracketSet
+   trackedFiles <- getTrackedSet
    putStrLn "Tracked files:"
    Prelude.mapM_ putStrLn trackedFiles
    putStrLn "\nUntracked files:"   
