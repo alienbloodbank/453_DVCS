@@ -9,5 +9,5 @@ import System.Environment (getArgs)
 
 main = do
    args <- getArgs
-   let msg = parse args  
+   msg <- parse args  
    putStrLn $ msg

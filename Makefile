@@ -1,5 +1,5 @@
 GHC = ghc
-SOURCES = $(wildcard *.hs)
+SOURCES = $(wildcard **/*.hs)
 OBJECTS = $(wildcard *.hi *.o)
 DRIVER = dvcs.hs
 TARGET = dvcs
