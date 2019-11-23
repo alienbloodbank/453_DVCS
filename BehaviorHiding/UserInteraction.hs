@@ -7,43 +7,71 @@ validCommands :: [String]
 validCommands = ["init", "clone", "add", "remove", "status", "heads", "diff", "cat", "checkout", "commit", "log", "merge", "pull", "push"]
 
 -- Ignores extra arguments everywhere
-process :: String -> [String] -> String
-process "init" args = performInit
-process "clone" args
-  | args == [] = "fatal: You must specify a repository to clone."
-  | otherwise = performClone (args !! 0)
-process "add" args
-  | args == [] = "Nothing specified, nothing added."
-  | otherwise = performAdd args
-process "remove" args
-  | args == [] = "usage: dvcs rm <file>..."
-  | otherwise = performRemove args
-process "status" args = performStatus
-process "heads" args = performHeads
-process "diff" args
-  | args == [] = "No revisions provided"
-  | (length args) == 1 = "No second revision to diff against"
-  | otherwise = performDiff (args !! 0) (args !! 1)
-process "log" args = performLog
-process "checkout" args
-  | args == [] = "No revision provided to checkout"
-  | otherwise = performCheckout (args !! 0)
-process "commit" args
-  | args == [] = "No commit message provided"
-  | otherwise = performCommit (args !! 0)
-process "cat" args
-  | (length args) == 0 || (length args) == 1 = "No filename given, no commit_id given"
-  | otherwise = performCat (args !! 0) (args !! 1)
-process "pull" args
-  | args == [] = "There is no tracking information for the current branch."
-  | otherwise = performPull (args !! 0)
-process "push" args
-  | args == [] = "fatal: No configured push destination."
-  | otherwise = performPush (args !! 0) 
+process :: String -> [String] -> IO String
+process "init" args = do
+   msg <- performInit
+   return msg
+process "clone" args = do
+   if args == [] then return "fatal: You must specify a repository to clone."
+   else do
+     msg <- performClone (args !! 0) 
+     return msg
+process "add" args = do
+   if args == [] then return "Nothing specified, nothing added."
+   else do 
+     msg <- performAdd args
+     return msg
+process "remove" args = do
+   if args == [] then return "usage: dvcs rm <file>..."
+   else do 
+     msg <- performRemove args
+     return msg
+process "status" args = do 
+   msg <- performStatus
+   return msg
+process "heads" args = do
+   msg <- performHeads
+   return msg
+process "diff" args = do
+   if args == [] then return "No revisions provided"
+   else if (length args) == 1 then return "No second revision to diff against"
+   else do
+     msg <- performDiff (args !! 0) (args !! 1)
+     return msg
+process "log" args = do
+   msg <- performLog
+   return msg
+process "checkout" args = do
+   if args == [] then return "No revision provided to checkout"
+   else do 
+     msg <- performCheckout (args !! 0)
+     return msg
+process "commit" args = do
+   if args == [] then return "No commit message provided"
+   else do 
+     msg <- performCommit (args !! 0)
+     return msg
+process "cat" args = do
+   if (length args) == 0 || (length args) == 1 then return "No filename given, no commit_id given"
+   else do 
+     msg <- performCat (args !! 0) (args !! 1)
+     return msg
+process "pull" args = do
+   if args == [] then return "There is no tracking information for the current branch."
+   else do 
+     msg <- performPull (args !! 0)
+     return msg
+process "push" args = do
+   if args == [] then return "fatal: No configured push destination."
+   else do 
+     msg <- performPush (args !! 0) 
+     return msg
 
-parse :: [String] -> String
-parse args = case args of [] -> "usage: dvcs <command> [<args>]"
-                          (command: res) -> if (command `elem` validCommands) 
-                                            then (process command res) 
-                                            else ("dvcs: " ++ command ++ " is not a dvcs command. See 'dvcs --help’")
-
+parse :: [String] -> IO String
+parse [] = do return "usage: dvcs <command> [<args>]"
+parse (command: res) = do
+    if (command `elem` validCommands)
+    then do 
+       msg <- (process command res)
+       return msg
+       else return ("dvcs: " ++ command ++ " is not a dvcs command. See 'dvcs --help’")

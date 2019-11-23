@@ -1,9 +1,0 @@
-Build Instructions:
-	- cd src/ (Go inside source directory)
-	- make (Fire "make" command)
-
-Output
-	- dvcs (binary file)
-
-Running Example:
-	- ./dvcs init
