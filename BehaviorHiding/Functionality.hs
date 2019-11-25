@@ -17,6 +17,7 @@ import System.Environment
 import System.Process
 import Data.List
 
+import SoftwareDecision.Concept.Commit (createCommitMeta, CommitID(..))
 import SoftwareDecision.Concept.TrackedSet (addFile, removeFile, getTrackedSet)
 import SoftwareDecision.Concept.Repo (createRepo)
 
@@ -82,6 +83,14 @@ performStatus = do
    Prelude.mapM_ putStrLn (allFiles \\ trackedFiles)
    return "\ndvcs status output"
 
+performCommit :: String -> IO String
+performCommit msg = do 
+  -- let commitId = "commit_id"
+  createCommitMeta (CommitID "commit_id") "m"
+
+  -- trackedFiles <- getTracketSet
+  return "Committed"
+
 -- TODO --
 ------------------------------------
 performHeads :: IO String
@@ -95,9 +104,6 @@ performLog = do return "dvcs log output"
 
 performCheckout :: String -> IO String
 performCheckout revid = do return "Checked out"
-
-performCommit :: String -> IO String
-performCommit msg = do return "Committed"
 
 performCat :: String -> String -> IO String
 performCat revid file = do return "dvcs cat output"
