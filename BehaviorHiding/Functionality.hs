@@ -17,7 +17,7 @@ import System.Environment
 import System.Process
 import Data.List
 
-import SoftwareDecision.Concept.Commit (createCommitMeta, CommitID(..))
+import SoftwareDecision.Concept.Commit (createCommitDir, createCommitMeta, CommitID(..))
 import SoftwareDecision.Concept.TrackedSet (addFile, removeFile, getTrackedSet)
 import SoftwareDecision.Concept.Repo (createRepo)
 
@@ -85,10 +85,10 @@ performStatus = do
 
 performCommit :: String -> IO String
 performCommit msg = do 
-  -- let commitId = "commit_id"
-  createCommitMeta (CommitID "commit_id") "m"
-
-  -- trackedFiles <- getTracketSet
+  commit_id <- (createCommitDir msg)
+  putStrLn ("commit id: " ++ (getStr commit_id))
+  -- to-do: update parents, children
+  -- to-do: copy files into the snapshot dir
   return "Committed"
 
 -- TODO --
