@@ -48,11 +48,12 @@ generateCommitID = do
     else
         return $ CommitID cid
 
-createCommitDir :: String -> IO ()
+createCommitDir :: String -> IO CommitID
 createCommitDir m = do
     cid <- generateCommitID
     createDirectory (objectPath ++ "/" ++ (getStr cid))
     createCommitMeta cid m
+    return cid
 
 createRootDir :: IO ()
 createRootDir = do 
@@ -61,14 +62,14 @@ createRootDir = do
 
 getCommitChildsWithPath :: FilePath -> IO [CommitID]
 getCommitChildsWithPath fp = do 
-    contents <- B.readFile fp
-    let (Just (CommitMeta {commitId = cid, message = m, date = d, childs = c, parents = p})) = (decode contents) :: Maybe CommitMeta
+    contents <- ((decodeFileStrict fp) :: IO (Maybe CommitMeta))
+    let (Just (CommitMeta {commitId = cid, message = m, date = d, childs = c, parents = p})) = contents
     return c
 
 getCommitParentsWithPath :: FilePath -> IO [CommitID]
 getCommitParentsWithPath fp = do 
-    contents <- B.readFile fp
-    let (Just (CommitMeta {commitId = cid, message = m, date = d, childs = c, parents = p})) = (decode contents) :: Maybe CommitMeta
+    contents <- ((decodeFileStrict fp) :: IO (Maybe CommitMeta))
+    let (Just (CommitMeta {commitId = cid, message = m, date = d, childs = c, parents = p})) = contents
     return p
 
 getCommitChilds :: CommitID -> IO [CommitID]
@@ -80,13 +81,18 @@ getCommitParents cid = getCommitParentsWithPath (commitMetaPath cid)
 getCommitFile :: CommitID -> String -> IO String
 getCommitFile cid fp = readFile $ (commitPath cid) ++ "/" ++ fp
 
-setCommitChilds :: CommitID -> [CommitID] -> IO()
+setCommitChilds :: CommitID -> [CommitID] -> IO ()
 setCommitChilds cid cids = do 
     let dest = (commitMetaPath cid)
     contents <- ((decodeFileStrict dest) :: IO (Maybe CommitMeta))
     let (Just (CommitMeta {commitId = cid, message=m, date=d, childs=c, parents=p})) = contents
     let new = CommitMeta {commitId = cid, message=m, date=d, childs=cids, parents=p}
     B.writeFile dest (encode new)
+
+addCommitChild :: CommitID -> [CommitID] -> IO ()
+addCommitChild cid cids = do 
+    old <- getCommitChilds cid
+    setCommitChilds cid $ old ++ cids
 
 setCommitParents :: CommitID -> [CommitID] -> IO()
 setCommitParents cid cids = do 
