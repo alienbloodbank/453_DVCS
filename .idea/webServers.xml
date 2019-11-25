@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="WebServers">
+    <option name="servers">
+      <webServer id="ca2d6ff2-65cb-4a65-a5d6-6c93726294da" name="rochester" url="http://128.151.69.85">
+        <fileTransfer host="128.151.69.85" port="22" rootFolder="/home/hoover/u7/zlin25" accessType="SFTP">
+          <advancedOptions>
+            <advancedOptions dataProtectionLevel="Private" passiveMode="true" shareSSLContext="true" />
+          </advancedOptions>
+          <option name="port" value="22" />
+        </fileTransfer>
+      </webServer>
+    </option>
+  </component>
+</project>

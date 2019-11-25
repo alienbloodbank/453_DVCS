@@ -103,6 +103,52 @@ getRemoteHEAD = do
    let (Just (RepoMetadata {pid = p, head_ = h, ts = files})) = (decode contents) :: Maybe RepoMetadata
    return h 
 
+getLocalLeaf :: IO CommitID
+getLocalLeaf = do
+   head <- getHEAD
+   childs <- (getCommitChilds head)
+   if (length childs) == 0
+    then return head
+    else do 
+      nx <- getNext head
+      return nx
+
+getNext :: CommitID -> IO CommitID
+getNext x = do
+   childs <- (getCommitChilds x)
+   if (length childs) == 0
+    then return x
+    else do
+      nx <- getNext $ head childs
+      return nx
+
+-- currently only a directory in the same machine is allowed
+data RepoPath = LocalPath FilePath deriving (Show)
+
+tempPath = "./." ++ dvcsName ++ "/temp"
+remoteLoc = "./." ++ dvcsName ++ "/temp/remote"
+
+copyRepo :: RepoPath -> IO ()
+copyRepo (LocalPath p) = do 
+   copyDir tempPath p
+   renameDir (tempPath ++ "/" ++ (takeBaseName p)) remoteLoc
+
+remoteCommitMetaPath :: CommitID -> String
+remoteCommitMetaPath cid = remoteLoc ++ "/" ++ objectPath ++ "/" 
+   ++ (getStr cid) ++ "/" ++ commitMetaName
+
+getRemotePID :: IO String
+getRemotePID = do
+   contents <- B.readFile $ remoteLoc ++ "/.dvcs/repometadata.json"
+   let (Just (RepoMetadata {pid = p, head_ = h, ts = files})) = (decode contents) :: Maybe RepoMetadata
+   return p
+
+getRemoteHEAD :: IO CommitID
+getRemoteHEAD = do
+   contents <- B.readFile $ remoteLoc ++ "/.dvcs/repometadata.json"
+   let (Just (RepoMetadata {pid = p, head_ = h, ts = files})) = (decode contents) :: Maybe RepoMetadata
+   return h 
+
 getRemoteTrackedSet :: IO [String]
 getRemoteTrackedSet = do
    contents <- B.readFile $ remoteLoc ++ "/" ++ repoMetaPath
