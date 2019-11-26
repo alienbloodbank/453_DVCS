@@ -9,27 +9,38 @@ import qualified Data.ByteString.Lazy as B
 import Data.List as List
 import System.Directory (copyFile, doesFileExist)
 
+readTS :: IO [String]
+readTS = do
+   contents <- B.readFile repoMetaPath
+   let (Just (RepoMetadata {pid = p, head_ = h, ts = files})) = (decode contents) :: Maybe RepoMetadata   
+   return files
+    
+writeTS :: [String] -> IO ()
+writeTS trackedSet = do
+   contents <- B.readFile repoMetaPath
+   let (Just (RepoMetadata {pid = p, head_ = h, ts = _})) = (decode contents) :: Maybe RepoMetadata
+   let new = RepoMetadata {pid = p, head_ = h, ts = trackedSet}
+   B.writeFile repoMetaPath (encode new)
+   copyFile "./.dvcs/repometadatatemp.json" repoMetaPath
+
 addFile :: String -> IO ()
 addFile fileName = do
    putStrLn fileName
-   contents <- ((decodeFileStrict repoMetaPath) :: IO (Maybe RepoMetadata))
-   let (Just (RepoMetadata {pid = p, head_ = h, ts = files})) = contents
-   let new = RepoMetadata {pid = p, head_ = h, ts = List.nub $ fileName:files}
-   B.writeFile repoMetaPath (encode new)
+   trackedSet <- readTS
+   let newTrackedSet = List.nub $ fileName : trackedSet
+   writeTS newTrackedSet
 
 removeFile :: String -> IO ()
 removeFile fileName = do
    putStrLn fileName
-   contents <- ((decodeFileStrict repoMetaPath) :: IO (Maybe RepoMetadata))
-   let (Just (RepoMetadata {pid = p, head_ = h, ts = files})) = contents
-   let new = RepoMetadata {pid = p, head_ = h, ts = List.filter (\x -> x /= fileName) files}
-   B.writeFile repoMetaPath (encode new)
+   trackedSet <- readTS
+   let newTrackedSet = List.delete fileName trackedSet
+   writeTS newTrackedSet
 
 getTrackedSet :: IO [String]
 getTrackedSet = do
-   contents <- ((decodeFileStrict repoMetaPath) :: IO (Maybe RepoMetadata))
-   let (Just (RepoMetadata {pid = p, head_ = h, ts = files})) = contents
-   return files
+   trackedSet <- readTS
+   return trackedSet
 
 -- HELPER FUNCTION 1 --
 removeNonExistantFiles :: [String] -> IO ()
@@ -45,6 +56,6 @@ removeNonExistantFiles files = do
 
 cleanTrackedSet :: IO ()
 cleanTrackedSet = do
-   trackedFiles <- getTrackedSet
-   removeNonExistantFiles trackedFiles
+   trackedSet <- readTS
+   removeNonExistantFiles trackedSet
    
