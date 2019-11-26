@@ -1,16 +1,16 @@
 # 453_DVCS
 
-# Build Instructions:
+### Build Instructions:
         - make (Fire "make" command)
 
-# Output
+### Output
         - dvcs (binary file)
 
-# Development
+### Development
         Changing any haskell source doesn't sometimes allow make to rebuild for some reason
         In that case run 'make clean' and the run 'make' 
 
-# Running Examples:
+### Running Examples:
         - ./dvcs init
         - ./dvcs add <file1>
         - ./dvcs remove <file1> <file2>
