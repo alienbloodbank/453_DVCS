@@ -5,23 +5,6 @@ import System.Directory
 import System.Process
 import System.Exit
 
-dvcsName = "dvcs"
-dvcsPath = "." ++ dvcsName
-
-repoMetaPath = dvcsPath ++ "/repometadata.json"
-
-objectRelativePath = "snapshot"
-objectPath = "." ++ dvcsName ++ "/" ++ objectRelativePath
-
-metaRelativePath = "info"
-metaPath = "." ++ dvcsName ++ "/" ++ metaRelativePath
-
-tempPath = "./." ++ dvcsName ++ "/temp"
-remoteLoc = "./." ++ dvcsName ++ "/temp/remote"
-
--- we can also store the linked list in a separate file 
-historyPath = metaPath ++ "/history"
-
 -- all the reading
 
 findDir :: FilePath -> IO String

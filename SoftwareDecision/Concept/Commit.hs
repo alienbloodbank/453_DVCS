@@ -7,7 +7,7 @@ import Data.Time
 import Data.Aeson
 import GHC.Generics
 import qualified Data.ByteString.Lazy as B
-import SoftwareDecision.Utility.DvcsInterface (objectPath)
+import SoftwareDecision.Concept.MetaOrganization
 import Test.RandomStrings (randomString, onlyAlphaNum, randomASCII)
 
 -- for metadata

@@ -9,6 +9,7 @@ import System.Directory (createDirectory, copyFile, doesDirectoryExist)
 import Test.RandomStrings (randomString, onlyAlphaNum, randomASCII)
 import qualified Data.ByteString.Lazy as B
 import SoftwareDecision.Utility.DvcsInterface
+import SoftwareDecision.Concept.MetaOrganization
 import SoftwareDecision.Concept.Commit
 import System.FilePath.Posix
 
@@ -28,18 +29,14 @@ generateRepoID = do
 
 createRepo :: IO ()
 createRepo = do
-   dirExist <- doesDirectoryExist dvcsPath
-   if not dirExist
-   then do 
-      createDirectory dvcsPath
-      createDirectory objectPath
-      createDirectory metaPath
-      createDirectory tempPath
-      p <- generateRepoID
-      let r = RepoMetadata {pid = p, head_ = (CommitID "root"), ts = []} 
-      B.writeFile repoMetaPath (encode r)
-      createRootDir
-   else return ()
+   createDirectory dvcsPath
+   createDirectory objectPath
+   createDirectory metaPath
+   createDirectory tempPath
+   p <- generateRepoID
+   let r = RepoMetadata {pid = p, head_ = (CommitID "root"), ts = []} 
+   B.writeFile repoMetaPath (encode r)
+   createRootDir
 
 getPID :: IO String
 getPID = do

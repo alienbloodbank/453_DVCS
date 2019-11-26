@@ -20,11 +20,12 @@ import Data.List
 import SoftwareDecision.Concept.Commit (createCommitDir, createCommitMeta, CommitID(..))
 import SoftwareDecision.Concept.TrackedSet (addFile, removeFile, getTrackedSet)
 import SoftwareDecision.Concept.Repo (createRepo)
-
+import SoftwareDecision.Concept.MetaOrganization (dvcsPath)
+import SoftwareDecision.Utility.DvcsInterface
 
 performInit :: IO String
 performInit = do
-   doesExist <- doesDirectoryExist "./.dvcs"
+   doesExist <- doesDirectoryExist dvcsPath
    cd <- getCurrentDirectory
    if doesExist then return ("Reinitialized existing dvcs repository in " ++ cd)
    else do
@@ -37,7 +38,7 @@ performClone :: String -> IO String
 performClone repo_path = do
    isLocalPath <- doesPathExist repo_path
    if isLocalPath then do
-     _ <- readProcess "cp" ["-r", repo_path, "."] ""
+     copyDir repo_path "."
      return "Cloned local repo"
    else do
      _ <- readProcess "scp" ["-r", repo_path, "."] ""
@@ -46,7 +47,7 @@ performClone repo_path = do
 ------------------------------------
 performAdd :: String -> IO String
 performAdd file = do
-   doesExist <- doesDirectoryExist "./.dvcs"
+   doesExist <- doesDirectoryExist dvcsPath
    if not(doesExist) then return "fatal: not a dvcs repository .dvcs"
    else do
      inCD <- doesFileExist file
@@ -63,7 +64,7 @@ performAdd file = do
 ------------------------------------
 performRemove :: String -> IO String
 performRemove file = do
-   doesExist <- doesDirectoryExist "./.dvcs"
+   doesExist <- doesDirectoryExist dvcsPath
    if not(doesExist) then return "fatal: not a dvcs repository .dvcs"
    else do
      trackedFiles <- getTrackedSet
@@ -73,7 +74,7 @@ performRemove file = do
          return "File removed"
 
 ------------------------------------
-performStatus :: IO String
+performStatus :: IO ()
 performStatus = do 
    trackedFiles <- getTrackedSet
    putStrLn "Tracked files:"
@@ -81,7 +82,6 @@ performStatus = do
    putStrLn "\nUntracked files:"   
    allFiles <- listDirectory "."
    Prelude.mapM_ putStrLn (allFiles \\ trackedFiles)
-   return "\ndvcs status output"
 
 performCommit :: String -> IO String
 performCommit msg = do 
