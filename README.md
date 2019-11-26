@@ -1,7 +1,6 @@
 # 453_DVCS
 
 # Build Instructions:
-        - cd src/ (Go inside source directory)
         - make (Fire "make" command)
 
 # Output
