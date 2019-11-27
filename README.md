@@ -20,7 +20,7 @@ see the `.pdf` and `.png` files in the directory Group Discussion; it includes n
 
 ### Development
         Changing any haskell source doesn't sometimes allow make to rebuild for some reason
-        In that case run 'make clean' and the run 'make' 
+        In that case run 'make clean' and then run 'make' 
 
 ### Running Examples:
         - ./dvcs init
