@@ -13,6 +13,7 @@ import qualified Data.ByteString.Lazy as B
 import SoftwareDecision.Utility.DvcsInterface
 import SoftwareDecision.Concept.MetaOrganization
 import SoftwareDecision.Concept.Commit
+import SoftwareDecision.Communication
 import System.FilePath.Posix
 
 data RepoMetadata = RepoMetadata {

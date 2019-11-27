@@ -19,15 +19,16 @@ import Data.List
 
 import SoftwareDecision.Concept.Commit (createCommitDir, createCommitMeta, CommitID(..))
 import SoftwareDecision.Concept.TrackedSet (addFile, removeFile, getTrackedSet)
-import SoftwareDecision.Concept.Repo (createRepo)
+import SoftwareDecision.Concept.Repo
 import SoftwareDecision.Concept.MetaOrganization (dvcsPath)
 import SoftwareDecision.Utility.DvcsInterface
+import SoftwareDecision.Communication
 
 performInit :: IO String
 performInit = do
-   doesExist <- doesDirectoryExist dvcsPath
+   doesRepoAlreadyExist <- isRepo
    cd <- getCurrentDirectory
-   if doesExist then return ("Reinitialized existing dvcs repository in " ++ cd)
+   if doesRepoAlreadyExist then return ("Reinitialized existing dvcs repository in " ++ cd)
    else do
       createRepo
       -- create root commit
@@ -35,19 +36,26 @@ performInit = do
 
 ------------------------------------
 performClone :: String -> IO String
-performClone repo_path = do
-   isLocalPath <- doesPathExist repo_path
+performClone repoPath = do
+   isLocalPath <- doesPathExist repoPath
    if isLocalPath then do
-     copyDir repo_path "."
-     return "Cloned local repo"
+     doesRepoExist <- doesDirectoryExist $ repoPath ++ "/" ++ dvcsPath 
+     if doesRepoExist then do
+        copyDir repoPath "."
+        return "Cloned local repo"
+     else return "Local directory doesn't seen to be valid repository"
    else do
-     _ <- readProcess "scp" ["-r", repo_path, "."] ""
-     return "Cloned remote repo"
+     let (hostname, remoteRepo) = break (==':') repoPath
+     doesRepoExist <- doesRemoteDirExist hostname ((tail remoteRepo) ++ "/" ++ dvcsPath)
+     if doesRepoExist then do
+        downloadRemoteDir repoPath
+        return "Cloned remote repo"
+     else return "Remote directory doesn't seen to be valid repository"
 
 ------------------------------------
 performAdd :: String -> IO String
 performAdd file = do
-   doesExist <- doesDirectoryExist dvcsPath
+   doesExist <- isRepo
    if not(doesExist) then return "fatal: not a dvcs repository .dvcs"
    else do
      inCD <- doesFileExist file
@@ -64,7 +72,7 @@ performAdd file = do
 ------------------------------------
 performRemove :: String -> IO String
 performRemove file = do
-   doesExist <- doesDirectoryExist dvcsPath
+   doesExist <- isRepo
    if not(doesExist) then return "fatal: not a dvcs repository .dvcs"
    else do
      trackedFiles <- getTrackedSet
@@ -75,7 +83,10 @@ performRemove file = do
 
 ------------------------------------
 performStatus :: IO String
-performStatus = do 
+performStatus = do
+   doesExist <- isRepo
+   if not(doesExist) then return "fatal: not a dvcs repository .dvcs"
+   else do 
    trackedFiles <- getTrackedSet
    putStrLn "Tracked files:"
    Prelude.mapM_ putStrLn trackedFiles
