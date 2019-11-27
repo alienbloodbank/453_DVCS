@@ -8,7 +8,7 @@ see the `.pdf` and `.png` files in the directory Group Discussion; it includes n
 ### Module Delegation
 - TianCheng Xu: Commit, Pull, Push, Diff in Functionality Module
 - Andrew Sexton: Status, Heads, Log, Checkout, Cat in Functionality Module
-- Ziliang Lin: CommitConcept and MetaOrganization in SoftwareDecision/Concept, DvcsInterface in SoftwareDecision/Utility
+- Ziliang Lin: Repo(remote part), CommitConcept and MetaOrganization in SoftwareDecision/Concept, DvcsInterface in SoftwareDecision/Utility
 - Soubhik Ghosh: Trackset, Repo in SoftwareDecision/Concept, Communication in SoftwareDecision,
                  Add, Remove, Clone, Init in Functionality Module
 
