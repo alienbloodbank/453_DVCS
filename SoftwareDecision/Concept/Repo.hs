@@ -1,9 +1,11 @@
 {-# LANGUAGE DeriveGeneric #-}
-module SoftwareDecision.Concept.Repo(RepoMetadata(..), createRepo) where
+module SoftwareDecision.Concept.Repo(RepoMetadata(..), createRepo, isRepo, 
+  getRemoteLeaf, getLocalLeaf, getHEAD, getRemoteHEAD, getPID, getRemotePID) where
 
 import GHC.Generics
 import Data.Aeson
-
+import Data.Time
+import Data.List
 import System.Exit
 import System.Directory (createDirectory, copyFile, doesDirectoryExist)
 import Test.RandomStrings (randomString, onlyAlphaNum, randomASCII)
@@ -26,6 +28,9 @@ generateRepoID :: IO String
 generateRepoID = do 
    pid <- randomString (onlyAlphaNum randomASCII) 20
    return pid
+
+isRepo :: IO Bool
+isRepo = doesDirectoryExist dvcsPath
 
 createRepo :: IO ()
 createRepo = do
@@ -85,24 +90,23 @@ copyRepo (LocalPath p) = do
    renameDir (tempPath ++ "/" ++ (takeBaseName p)) remoteLoc
 
 remoteCommitMetaPath :: CommitID -> String
-remoteCommitMetaPath cid = remoteLoc ++ "/" ++ objectPath ++ "/" 
-   ++ (getStr cid) ++ "/" ++ commitMetaName
+remoteCommitMetaPath cid = remoteLoc ++ "/" ++ (commitMetaPath cid)
 
 getRemotePID :: IO String
 getRemotePID = do
-   contents <- B.readFile $ remoteLoc ++ "/" ++ repoMetaPath
+   contents <- B.readFile $ remoteRepoMetaPath
    let (Just (RepoMetadata {pid = p, head_ = h, ts = files})) = (decode contents) :: Maybe RepoMetadata
    return p
 
 getRemoteHEAD :: IO CommitID
 getRemoteHEAD = do
-   contents <- B.readFile $ remoteLoc ++ "/" ++ repoMetaPath
+   contents <- B.readFile $ remoteRepoMetaPath
    let (Just (RepoMetadata {pid = p, head_ = h, ts = files})) = (decode contents) :: Maybe RepoMetadata
    return h 
 
 getRemoteTrackedSet :: IO [String]
 getRemoteTrackedSet = do
-   contents <- B.readFile $ remoteLoc ++ "/" ++ repoMetaPath
+   contents <- B.readFile $ remoteRepoMetaPath
    let (Just (RepoMetadata {pid = p, head_ = h, ts = files})) = (decode contents) :: Maybe RepoMetadata
    return files
 
@@ -111,6 +115,26 @@ getRemoteCommitChilds cid = getCommitChildsWithPath $ remoteCommitMetaPath cid
 
 getRemoteCommitParents :: CommitID -> IO [CommitID]
 getRemoteCommitParents cid = getCommitParentsWithPath $ remoteCommitMetaPath cid
+
+-- only for testing
+setRemoteHEAD :: CommitID -> IO ()
+setRemoteHEAD cid = do
+   contents <- ((decodeFileStrict $ remoteRepoMetaPath ) :: IO (Maybe RepoMetadata))
+   let (Just (RepoMetadata {pid = p, head_ = _, ts = files})) = contents
+   let new = RepoMetadata {pid = p, head_ = cid, ts = files}
+   B.writeFile remoteRepoMetaPath (encode new)
+
+setRemoteCommitChilds :: CommitID -> [CommitID] -> IO ()
+setRemoteCommitChilds cid cids = setCommitChildsWithPath (remoteCommitMetaPath cid) cids
+
+setRemoteCommitParents :: CommitID -> [CommitID] -> IO ()
+setRemoteCommitParents cid cids = setCommitParentsWithPath (remoteCommitMetaPath cid) cids
+
+getRemoteCommitDate :: CommitID -> IO UTCTime
+getRemoteCommitDate cid = do 
+   contents <- (decodeFileStrict (remoteCommitMetaPath cid)) :: IO (Maybe CommitMeta)
+   let (Just (CommitMeta {commitId = cid, message = m, date = d, childs = c, parents = p})) = contents
+   return d
 
 getRemoteLeaf :: IO CommitID
 getRemoteLeaf = do 
@@ -130,3 +154,59 @@ getRemoteNext x = do
     else do
       nx <- getRemoteNext $ head childs
       return nx
+
+-- get the most recent common ancestor, where the local commit and the remote one 
+-- should have the same commitID
+
+getUpToHead :: IO [CommitID]
+getUpToHead = getUpToHeadRecursive [CommitID "root"]
+
+getUpToHeadRecursive :: [CommitID] -> IO [CommitID]
+getUpToHeadRecursive lst = do
+   let cid = last lst
+   childs <- getCommitChilds cid
+   if childs == []
+    then return lst
+   else do
+    lh <- getHEAD
+    if foldl (&&) True ((/= lh) <$> childs)
+     then do 
+      result <- getUpToHeadRecursive $ lst ++ (sort childs)
+      return result
+     else return $ lst ++ [lh]
+
+getUpToRemoteHead :: IO [CommitID]
+getUpToRemoteHead = getUpToRemoteHeadRecursive [CommitID "root"]
+
+getUpToRemoteHeadRecursive :: [CommitID] -> IO [CommitID]
+getUpToRemoteHeadRecursive lst = do
+   let cid = last lst
+   childs <- getRemoteCommitChilds cid
+   if childs == []
+    then return lst
+   else do
+    rh <- getRemoteHEAD
+    if foldl (&&) True ((/= rh) <$> childs)
+     then do 
+      result <- getUpToRemoteHeadRecursive $ lst ++ (sort childs)
+      return result
+     else return $ lst ++ [rh]
+
+getMRCA :: IO (Maybe CommitID)
+getMRCA = do
+   localHistory <- getUpToHead
+   remoteHistory <- getUpToRemoteHead
+   let mrca = last $ intersect localHistory remoteHistory
+   if mrca == (CommitID "root")
+    then return Nothing
+    else return $Just mrca
+
+-- getMostRecentSame :: [CommitID] -> [CommitID] -> CommitID
+-- getMostRecentSame a@(x1:y1:_) b@(x2:y2:_)
+--    | (x1 == x2) && (y1 /= y2) = x1
+--    | (x1 == x2) && (y1 == y2) = getMostRecentSame (tail a) (tail b)
+--    | otherwise = CommitID "root"
+-- getMostRecentSame (x1:_) (y1:_)
+--    | x1 == y1 = x1
+--    | otherwise = CommitID "root"
+-- getMostRecentSame [] [] = CommitID "root"

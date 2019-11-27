@@ -15,5 +15,7 @@ metaPath = "." ++ dvcsName ++ "/" ++ metaRelativePath
 tempPath = "./." ++ dvcsName ++ "/temp"
 remoteLoc = "./." ++ dvcsName ++ "/temp/remote"
 
+remoteRepoMetaPath = remoteLoc ++ "/" ++ repoMetaPath
+
 -- we can also store the linked list in a separate file 
 historyPath = metaPath ++ "/history"

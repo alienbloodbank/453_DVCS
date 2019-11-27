@@ -11,7 +11,7 @@ import SoftwareDecision.Concept.MetaOrganization
 import Test.RandomStrings (randomString, onlyAlphaNum, randomASCII)
 
 -- for metadata
-newtype CommitID = CommitID {getStr :: String} deriving (Generic, Show, Eq)
+newtype CommitID = CommitID {getStr :: String} deriving (Generic, Show, Eq, Ord)
 
 instance FromJSON CommitID
 instance ToJSON CommitID
@@ -60,6 +60,12 @@ createRootDir = do
     createDirectory (objectPath ++ "/root")
     createCommitMeta (CommitID "root") "root of a history"
 
+getCommitDate :: CommitID -> IO UTCTime
+getCommitDate cid = do 
+    contents <- (decodeFileStrict (commitMetaPath cid)) :: IO (Maybe CommitMeta)
+    let (Just (CommitMeta {commitId = cid, message = m, date = d, childs = c, parents = p})) = contents
+    return d
+
 getCommitChildsWithPath :: FilePath -> IO [CommitID]
 getCommitChildsWithPath fp = do 
     contents <- ((decodeFileStrict fp) :: IO (Maybe CommitMeta))
@@ -72,6 +78,20 @@ getCommitParentsWithPath fp = do
     let (Just (CommitMeta {commitId = cid, message = m, date = d, childs = c, parents = p})) = contents
     return p
 
+setCommitChildsWithPath :: FilePath -> [CommitID] -> IO ()
+setCommitChildsWithPath fp cids = do 
+    contents <- ((decodeFileStrict fp) :: IO (Maybe CommitMeta))
+    let (Just (CommitMeta {commitId = cid, message=m, date=d, childs=c, parents=p})) = contents
+    let new = CommitMeta {commitId = cid, message=m, date=d, childs=cids, parents=p}
+    B.writeFile fp (encode new)
+
+setCommitParentsWithPath :: FilePath -> [CommitID] -> IO ()
+setCommitParentsWithPath fp cids = do 
+    contents <- ((decodeFileStrict fp) :: IO (Maybe CommitMeta))
+    let (Just (CommitMeta {commitId = cid, message=m, date=d, childs=c, parents=p})) = contents
+    let new = CommitMeta {commitId = cid, message=m, date=d, childs=c, parents=cids}
+    B.writeFile fp (encode new)
+
 getCommitChilds :: CommitID -> IO [CommitID]
 getCommitChilds cid = getCommitChildsWithPath (commitMetaPath cid)
 
@@ -82,12 +102,7 @@ getCommitFile :: CommitID -> String -> IO String
 getCommitFile cid fp = readFile $ (commitPath cid) ++ "/" ++ fp
 
 setCommitChilds :: CommitID -> [CommitID] -> IO ()
-setCommitChilds cid cids = do 
-    let dest = (commitMetaPath cid)
-    contents <- ((decodeFileStrict dest) :: IO (Maybe CommitMeta))
-    let (Just (CommitMeta {commitId = cid, message=m, date=d, childs=c, parents=p})) = contents
-    let new = CommitMeta {commitId = cid, message=m, date=d, childs=cids, parents=p}
-    B.writeFile dest (encode new)
+setCommitChilds cid cids = setCommitChildsWithPath (commitMetaPath cid) cids
 
 addCommitChild :: CommitID -> [CommitID] -> IO ()
 addCommitChild cid cids = do 
@@ -95,9 +110,4 @@ addCommitChild cid cids = do
     setCommitChilds cid $ old ++ cids
 
 setCommitParents :: CommitID -> [CommitID] -> IO()
-setCommitParents cid cids = do 
-    let dest = (commitMetaPath cid)
-    contents <- ((decodeFileStrict dest) :: IO (Maybe CommitMeta) )
-    let (Just (CommitMeta {commitId = cid, message=m, date=d, childs=c, parents=p})) = contents
-    let new = CommitMeta {commitId = cid, message=m, date=d, childs=c, parents=cids}
-    B.writeFile dest (encode new)
+setCommitParents cid cids = setCommitParentsWithPath (commitMetaPath cid) cids
