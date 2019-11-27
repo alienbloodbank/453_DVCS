@@ -71,10 +71,10 @@ performRemove file = do
      if (file `notElem` trackedFiles) then return "Error: File not being tracked. Nothing to remove"
      else do
          removeFile file
-         return "File removed"
+         return $ file ++ " removed"
 
 ------------------------------------
-performStatus :: IO ()
+performStatus :: IO String
 performStatus = do 
    trackedFiles <- getTrackedSet
    putStrLn "Tracked files:"
@@ -82,6 +82,7 @@ performStatus = do
    putStrLn "\nUntracked files:"   
    allFiles <- listDirectory "."
    Prelude.mapM_ putStrLn (allFiles \\ trackedFiles)
+   return "success" 
 
 performCommit :: String -> IO String
 performCommit msg = do 

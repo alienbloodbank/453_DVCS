@@ -1,5 +1,5 @@
 import System.IO
-import Test.HUnit
+-- import Test.HUnit
 import Text.Printf
 
 import BehaviorHiding.UserInteraction (parse)
