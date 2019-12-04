@@ -60,6 +60,20 @@ createRootDir = do
     createDirectory (objectPath ++ "/root")
     createCommitMeta (CommitID "root") "root of a history"
 
+
+-- getCommitID and getCommitMessage only for testing
+getCommitID :: CommitID -> IO CommitID
+getCommitID cid = do 
+    contents <- (decodeFileStrict (commitMetaPath cid)) :: IO (Maybe CommitMeta)
+    let (Just (CommitMeta {commitId = cid2, message = m, date = d, childs = c, parents = p})) = contents
+    return cid2
+
+getCommitMessage :: CommitID -> IO String
+getCommitMessage cid = do 
+    contents <- (decodeFileStrict (commitMetaPath cid)) :: IO (Maybe CommitMeta)
+    let (Just (CommitMeta {commitId = cid2, message = m, date = d, childs = c, parents = p})) = contents
+    return m
+
 getCommitDate :: CommitID -> IO UTCTime
 getCommitDate cid = do 
     contents <- (decodeFileStrict (commitMetaPath cid)) :: IO (Maybe CommitMeta)
@@ -104,8 +118,8 @@ getCommitFile cid fp = readFile $ (commitPath cid) ++ "/" ++ fp
 setCommitChilds :: CommitID -> [CommitID] -> IO ()
 setCommitChilds cid cids = setCommitChildsWithPath (commitMetaPath cid) cids
 
-addCommitChild :: CommitID -> [CommitID] -> IO ()
-addCommitChild cid cids = do 
+addCommitChilds :: CommitID -> [CommitID] -> IO ()
+addCommitChilds cid cids = do 
     old <- getCommitChilds cid
     setCommitChilds cid $ old ++ cids
 

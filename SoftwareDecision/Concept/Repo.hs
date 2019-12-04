@@ -1,6 +1,8 @@
 {-# LANGUAGE DeriveGeneric #-}
 module SoftwareDecision.Concept.Repo(RepoMetadata(..), createRepo, isRepo, 
-  getRemoteLeaf, getLocalLeaf, getHEAD, getRemoteHEAD, getPID, getRemotePID) where
+  getRemoteLeaf, getLocalLeaf, getHEAD, getRemoteHEAD, getPID, getRemotePID, 
+  RepoPath(..), getMRCA, copyRepo, getRemoteTrackedSet, getRemoteCommitChilds, 
+  getRemoteCommitParents, setHEAD) where
 
 import GHC.Generics
 import Data.Aeson
@@ -200,13 +202,3 @@ getMRCA = do
    if mrca == (CommitID "root")
     then return Nothing
     else return $Just mrca
-
--- getMostRecentSame :: [CommitID] -> [CommitID] -> CommitID
--- getMostRecentSame a@(x1:y1:_) b@(x2:y2:_)
---    | (x1 == x2) && (y1 /= y2) = x1
---    | (x1 == x2) && (y1 == y2) = getMostRecentSame (tail a) (tail b)
---    | otherwise = CommitID "root"
--- getMostRecentSame (x1:_) (y1:_)
---    | x1 == y1 = x1
---    | otherwise = CommitID "root"
--- getMostRecentSame [] [] = CommitID "root"
