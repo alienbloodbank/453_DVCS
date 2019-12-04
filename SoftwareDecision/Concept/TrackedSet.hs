@@ -20,8 +20,10 @@ writeTS trackedSet = do
    contents <- B.readFile repoMetaPath
    let (Just (RepoMetadata {pid = p, head_ = h, ts = _})) = (decode contents) :: Maybe RepoMetadata
    let new = RepoMetadata {pid = p, head_ = h, ts = trackedSet}
-   B.writeFile repoMetaPath (encode new)
-   copyFile "./.dvcs/repometadatatemp.json" repoMetaPath
+   
+   let tmpFilePath = "./.dvcs/repometadatatemp.json"
+   B.writeFile tmpFilePath (encode new)
+   copyFile tmpFilePath repoMetaPath
 
 addFile :: String -> IO ()
 addFile fileName = do
