@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveGeneric #-}
 
-module SoftwareDecision.Concept.TrackedSet (addFile, removeFile, getTrackedSet) where
+module SoftwareDecision.Concept.TrackedSet (addFile, removeFile, getTrackedSet, cleanTrackedSet) where
 
 import SoftwareDecision.Concept.Repo
 import SoftwareDecision.Concept.MetaOrganization (repoMetaPath)

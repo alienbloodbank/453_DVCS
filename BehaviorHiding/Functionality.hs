@@ -18,7 +18,7 @@ import System.Process
 import Data.List
 
 import SoftwareDecision.Concept.Commit (createCommitDir, createCommitMeta, CommitID(..))
-import SoftwareDecision.Concept.TrackedSet (addFile, removeFile, getTrackedSet)
+import SoftwareDecision.Concept.TrackedSet (addFile, removeFile, getTrackedSet, cleanTrackedSet)
 import SoftwareDecision.Concept.Repo
 import SoftwareDecision.Concept.MetaOrganization (dvcsPath)
 import SoftwareDecision.Utility.DvcsInterface
@@ -95,9 +95,9 @@ performStatus = do
    Prelude.mapM_ putStrLn (allFiles \\ trackedFiles)
    return "success" 
 
-rmf :: Bool-> String -> IO()
-rmf True x = removeFile x
-rmf False _ = putStrLn("")
+-- rmf :: Bool-> String -> IO()
+-- rmf True x = removeFile x
+-- rmf False _ = putStrLn("")
 
 performCommit :: String -> IO String
 performCommit msg = do 
@@ -105,8 +105,9 @@ performCommit msg = do
   if (length trackedFiles) == 0
     then return "Nothing to commit: tracked set empty"
     else do
-      allFiles <- listDirectory "."
-      mapM_ (\x -> rmf (notElem x allFiles) x) trackedFiles
+      -- allFiles <- listDirectory "."
+      -- mapM_ (\x -> rmf (notElem x allFiles) x) trackedFiles
+      cleanTrackedSet
       
       -- commit_id <- (createCommitDir msg)
       -- putStrLn ("commit id: " ++ (getStr commit_id))
@@ -114,7 +115,7 @@ performCommit msg = do
       -- to-do: update parents, children
       -- to-do: copy files into the snapshot dir
       return "Committed"
-      
+
 -- TODO --
 ------------------------------------
 performHeads :: IO String
