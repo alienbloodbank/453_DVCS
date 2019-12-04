@@ -4,6 +4,7 @@
 see the `.pdf` and `.png` files in the directory Group Discussion; it includes new module guide, complete module specification, use hierarchy. 
 
 ## Team Manager - Max Wasserman
+![Max Wasserman](https://www.cs.rochester.edu/people/graduate/assets/images/wasserman_max.jpg?1575253267788)
 
 ### Module Delegation
 - TianCheng Xu: Commit, Pull, Push, Diff in Functionality Module
@@ -20,7 +21,7 @@ see the `.pdf` and `.png` files in the directory Group Discussion; it includes n
 
 ### Development
         Changing any haskell source doesn't sometimes allow make to rebuild for some reason
-        In that case run 'make clean' and the run 'make' 
+        In that case run 'make clean' and then run 'make' 
 
 ### Running Examples:
         - ./dvcs init
