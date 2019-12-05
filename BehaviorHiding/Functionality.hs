@@ -12,12 +12,12 @@ performCat,
 performPull,
 performPush) where
 
-import System.Directory (doesDirectoryExist, getCurrentDirectory, doesFileExist, doesPathExist, listDirectory)
+import System.Directory (doesDirectoryExist, getCurrentDirectory, doesFileExist, doesPathExist, listDirectory, copyFile)
 import System.Environment
 import System.Process
 import Data.List
 
-import SoftwareDecision.Concept.Commit (createCommitDir, createCommitMeta, CommitID(..))
+import SoftwareDecision.Concept.Commit (createCommitDir, getCommitFile, commitPath, CommitID(..))
 import SoftwareDecision.Concept.TrackedSet (addFile, removeFile, getTrackedSet, cleanTrackedSet)
 import SoftwareDecision.Concept.Repo
 import SoftwareDecision.Concept.MetaOrganization (dvcsPath)
@@ -95,26 +95,35 @@ performStatus = do
    Prelude.mapM_ putStrLn (allFiles \\ trackedFiles)
    return "success" 
 
--- rmf :: Bool-> String -> IO()
--- rmf True x = removeFile x
--- rmf False _ = putStrLn("")
 
 performCommit :: String -> IO String
 performCommit msg = do 
   trackedFiles <- getTrackedSet
+  
   if (length trackedFiles) == 0
     then return "Nothing to commit: tracked set empty"
     else do
-      -- allFiles <- listDirectory "."
-      -- mapM_ (\x -> rmf (notElem x allFiles) x) trackedFiles
-      cleanTrackedSet
-      
-      -- commit_id <- (createCommitDir msg)
-      -- putStrLn ("commit id: " ++ (getStr commit_id))
-      
-      -- to-do: update parents, children
-      -- to-do: copy files into the snapshot dir
-      return "Committed"
+      cleanTrackedSet -- remove files from TS if not in CD
+      head_cid <- getHEAD
+      -- putStrLn(getStr head_cid) -- print out HEAD
+
+      if (getStr head_cid) == "root"
+        then do
+          -- This is the first (root) commit in repo
+          commit_id <- createCommitDir msg
+          let commit_path = (commitPath commit_id)
+          putStrLn ("commit path: " ++ commit_path)
+
+          -- Copy files
+          mapM_ (\x -> copyFile (x) (commit_path ++ "/" ++ x)) trackedFiles
+
+          setHEAD commit_id
+          return "committed"
+        
+        else do
+          -- TODO
+          putStrLn "else"
+          return "committed"
 
 -- TODO --
 ------------------------------------
