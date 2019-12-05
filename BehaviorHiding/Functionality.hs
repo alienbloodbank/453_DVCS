@@ -15,9 +15,10 @@ performPush) where
 import System.Directory (doesDirectoryExist, getCurrentDirectory, doesFileExist, doesPathExist, listDirectory, copyFile)
 import System.Environment
 import System.Process
+import System.IO.Unsafe
 import Data.List
 
-import SoftwareDecision.Concept.Commit (createCommitDir, getCommitFile, commitPath, CommitID(..))
+import SoftwareDecision.Concept.Commit (createCommitDir, getCommitFile, commitPath, addCommitChilds, setCommitChilds, setCommitParents, CommitID(..))
 import SoftwareDecision.Concept.TrackedSet (addFile, removeFile, getTrackedSet, cleanTrackedSet)
 import SoftwareDecision.Concept.Repo
 import SoftwareDecision.Concept.MetaOrganization (dvcsPath)
@@ -95,6 +96,12 @@ performStatus = do
    Prelude.mapM_ putStrLn (allFiles \\ trackedFiles)
    return "success" 
 
+checkAltered :: CommitID -> String -> IO Bool
+checkAltered head_cid file_name = do
+    head_file_c <- (getCommitFile head_cid file_name)
+    file_c <- (readFile file_name)
+    let if_altered = not (head_file_c == file_c)
+    return if_altered
 
 performCommit :: String -> IO String
 performCommit msg = do 
@@ -116,15 +123,62 @@ performCommit msg = do
 
           -- Copy files
           mapM_ (\x -> copyFile (x) (commit_path ++ "/" ++ x)) trackedFiles
-
+          -- Set HEAD
           setHEAD commit_id
           return "committed"
-        
         else do
-          -- TODO
-          putStrLn "else"
-          return "committed"
+          -- TODO:
+          -- (*) check if there are new changes to commit:
+          
+          -- Get files (names only) of the HEAD commit
+          files_in_head_io <- (listDirectory (commitPath head_cid))
+          let files_in_head = filter (/= "commitMeta.json") files_in_head_io
+          -- mapM_ (\x->putStrLn(show(x))) files_in_head -- for DEBUG use: print out these files
+          
+          -- Show their contents
+          -- head_files_content <- mapM (\x -> (getCommitFile head_cid x)) head_files
+          -- mapM_ (\x->putStrLn(show(x))) head_files_content  
+          
+          -- Get files in different states:
+          -- new:
+          let new_files = filter (\x -> (notElem (x) files_in_head)) trackedFiles
+          mapM_ (\x->putStrLn("new file: " ++ show(x))) new_files
+          
+          let files_in_TS = filter (\x -> (elem x files_in_head)) trackedFiles
+          -- altered:
+          let altered_files = filter (\x -> (unsafePerformIO (checkAltered head_cid (x)))) files_in_TS 
+          mapM_ (\x->putStrLn("altered file: " ++ show(x))) altered_files
+          -- unaltered:
+          let unaltered_files = filter (\x -> (not (unsafePerformIO (checkAltered head_cid (x))))) files_in_TS 
+          -- mapM_ (\x->putStrLn("unaltered file: " ++ show(x))) unaltered_files
+          
+          -- deleted:
+          let deleted_files = filter (\x -> (notElem (x) trackedFiles)) files_in_head
 
+          if ((length new_files) == 0) && ((length altered_files) == 0)
+            then do
+              putStrLn "No altered or new files: nothing to commit"
+              return "not committed"
+            else do
+              -- create a new commit
+              commit_id <- createCommitDir msg
+              -- set parents and children
+
+              let commit_path = (commitPath commit_id)
+              putStrLn ("commit path: " ++ commit_path)
+
+              -- copy files
+              mapM_ (\x -> copyFile (x) (commit_path ++ "/" ++ x)) new_files
+              mapM_ (\x -> copyFile (x) (commit_path ++ "/" ++ x)) altered_files
+
+              -- update parents and children
+              setCommitChilds head_cid [commit_id]
+              setCommitParents commit_id [head_cid]
+
+              -- update HEAD
+              setHEAD commit_id
+              return "committed"
+          
 -- TODO --
 ------------------------------------
 performHeads :: IO String
