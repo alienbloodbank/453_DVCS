@@ -12,11 +12,12 @@ performCat,
 performPull,
 performPush) where
 
-import System.Directory (doesDirectoryExist, getCurrentDirectory, doesFileExist, doesPathExist, listDirectory, copyFile)
+import System.Directory (doesDirectoryExist, getCurrentDirectory, doesFileExist, doesPathExist, listDirectory, copyFile, createDirectoryIfMissing)
 import System.Environment
 import System.Process
 import System.IO.Unsafe
 import Data.List
+import Data.List.Split
 
 import SoftwareDecision.Concept.Commit (createCommitDir, getCommitFile, commitPath, addCommitChilds, setCommitChilds, setCommitParents, CommitID(..))
 import SoftwareDecision.Concept.TrackedSet (addFile, removeFile, getTrackedSet, cleanTrackedSet)
@@ -122,6 +123,7 @@ performCommit msg = do
           putStrLn ("commit path: " ++ commit_path)
 
           -- Copy files
+          mapM_ (\x -> createDirectoryIfMissing True (commit_path ++ "/" ++ (intercalate "/" (init (splitOn "/" x))))) trackedFiles
           mapM_ (\x -> copyFile (x) (commit_path ++ "/" ++ x)) trackedFiles
           -- Set HEAD
           setHEAD commit_id
@@ -168,7 +170,9 @@ performCommit msg = do
               putStrLn ("commit path: " ++ commit_path)
 
               -- copy files
+              mapM_ (\x -> createDirectoryIfMissing True (commit_path ++ "/" ++ (intercalate "/" (init (splitOn "/" x))))) new_files
               mapM_ (\x -> copyFile (x) (commit_path ++ "/" ++ x)) new_files
+              mapM_ (\x -> createDirectoryIfMissing True (commit_path ++ "/" ++ (intercalate "/" (init (splitOn "/" x))))) altered_files
               mapM_ (\x -> copyFile (x) (commit_path ++ "/" ++ x)) altered_files
 
               -- update parents and children
