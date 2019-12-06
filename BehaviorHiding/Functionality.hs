@@ -18,8 +18,9 @@ import System.Process
 import System.IO.Unsafe
 import Data.List
 import Data.List.Split
+import Data.Algorithm.Diff
 
-import SoftwareDecision.Concept.Commit (createCommitDir, getCommitFile, commitPath, addCommitChilds, setCommitChilds, setCommitParents, CommitID(..), getCommitMessage)
+import SoftwareDecision.Concept.Commit (createCommitDir, getCommitFile, getCommitMessage, getCommitDate, getCommitParents, commitPath, addCommitChilds, setCommitChilds, setCommitParents, CommitID(..))
 import SoftwareDecision.Concept.TrackedSet (addFile, removeFile, getTrackedSet, cleanTrackedSet)
 import SoftwareDecision.Concept.Repo
 import SoftwareDecision.Concept.MetaOrganization (dvcsPath)
@@ -200,30 +201,93 @@ performHeads = do
   doesExist <- isRepo
   if not(doesExist) then return "fatal: not a dvcs repository .dvcs"
   else do
-    head <- getHEAD
-    if head == (CommitID "root") then return "fatal: no commits in current repository."
+    commit_head <- getHEAD
+    if commit_head == (CommitID "root") then return "fatal: no commits in current repository."
     else do
-      putStr $ "commit: " ++ (getStr head) ++ "\n"
-      message <- getCommitMessage head
+      putStr $ "commit: " ++ (getStr commit_head) ++ "\n"
+      message <- getCommitMessage commit_head
+      -- time <- getCommitDate head
       putStr $ "message: " ++ message
+      time <- getCommitDate commit_head
+      putStr $ "time: " ++ time
       return ""
 
+performSnapshotDiff :: [Diff String] -> IO()
+performSnapshotDiff dFiles = do
+  let first = head dFiles
+  return ()
+
+
 performDiff :: String -> String -> IO String
-performDiff revid1 revid2 = do return "dvcs diff output"
+performDiff revid1 revid2 = do
+  doesExist <- isRepo
+  if not(doesExist) then return "fatal: not a dvcs repository .dvcs"
+    else if revid1 == revid2 then return "fatal: ID's are identical"
+      else do
+        let path1 = commitPath (CommitID revid1)
+        let path2 = commitPath (CommitID revid2)
+        isPath1 <- doesPathExist path1
+        isPath2 <- doesPathExist path2
+        if not(isPath1) then return ("fatal: invalid commit id." ++ revid1)
+          else if not(isPath2) then return ("fatal: invalid commit id." ++ revid2)
+            else do
+              files1 <- listDirectory path1
+              files2 <- listDirectory path2
+              performSnapshotDiff $ getDiff files1 files2
+              return ""
+
+
+
+
+logHelper :: [CommitID] -> IO [(String, String, String)]
+logHelper commit_list = do
+  if commit_list == [] then return []
+  else do
+    let (first:rest) = commit_list
+    commit_message <- getCommitMessage first
+    commit_date <- getCommitDate first
+    let (cid, message, time) = (getStr first, commit_message, commit_date)
+    partial <- logHelper rest
+    return ((cid, message, time):partial)
+
 
 performLog :: IO String
-performLog = do return "dvcs log output"
+performLog = do
+  doesExist <- isRepo
+  if not(doesExist) then return "fatal: not a dvcs repository .dvcs"
+  else do
+    commit_head <- getHEAD
+    if commit_head == (CommitID "root") then return "fatal: no commits in current repository."
+    else do
+      commit_list <- getUpToHead
+      let com_list = tail commit_list
+      commit_info <- logHelper com_list
+      mapM_ (\(x,y,z) -> putStrLn $ "Commit: " ++ x ++ "\n" ++
+                                    "Message: " ++ y ++ "\n" ++
+                                    "Commit Time: " ++ z ++ "\n") commit_info
+      --Prints extra line on return--
+      return ""
 
 performCheckout :: String -> IO String
-performCheckout revid = do return "Checked out"
+performCheckout revid = do
+  doesExist <- isRepo
+  if not(doesExist) then return "fatal: not a dvcs repository .dvcs"
+  else do
+    let commit_path = commitPath (CommitID revid)
+    isPath <- doesPathExist commit_path
+    if not(isPath) then return "fatal: invalid commit id."
+    else do
+      setHEAD (CommitID revid)
+      return ("Head successfully changed to " ++ revid)
 
 performCat :: String -> String -> IO String
 performCat revid file = do
   doesExist <- isRepo
   if not(doesExist) then return "fatal: not a dvcs repository .dvcs"
   else do
-    inCD <- doesFileExist file
-    if not(inCD) then return "fatal: file does not exist in current directory"
+    let commit_path = commitPath (CommitID revid)
+    isPath <- doesPathExist commit_path
+    if not(isPath) then return "fatal: invalid commit id."
     else do
       cur_file <- getCommitFile (CommitID revid) file
       putStr cur_file

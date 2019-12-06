@@ -3,7 +3,7 @@
 module SoftwareDecision.Concept.Commit where
 
 import System.Directory
-import Data.Time 
+import Data.Time
 import Data.Aeson
 import GHC.Generics
 import qualified Data.ByteString.Lazy as B
@@ -17,13 +17,13 @@ instance FromJSON CommitID
 instance ToJSON CommitID
 
 data CommitMeta = CommitMeta {commitId :: CommitID, message :: String, date ::UTCTime,
-childs :: [CommitID], parents::[CommitID]} 
+childs :: [CommitID], parents::[CommitID]}
     deriving (Generic, Show)
 
 instance FromJSON CommitMeta
 instance ToJSON CommitMeta
 
-commitMetaName = "commitMeta.json" 
+commitMetaName = "commitMeta.json"
 
 commitPath :: CommitID -> String
 commitPath (CommitID cid) = objectPath ++ "/" ++ cid
@@ -32,17 +32,17 @@ commitMetaPath :: CommitID -> String
 commitMetaPath cid = (commitPath cid) ++ "/" ++ commitMetaName
 
 createCommitMeta :: CommitID -> String -> IO ()
-createCommitMeta cid m = do 
+createCommitMeta cid m = do
     currentTime <- getCurrentTime
     let newCommit = CommitMeta {commitId = cid, message = m, date = currentTime, childs=[], parents=[]}
     B.writeFile (commitMetaPath cid) (encode newCommit)
 
 generateCommitID :: IO CommitID
-generateCommitID = do 
+generateCommitID = do
     cid <- randomString (onlyAlphaNum randomASCII) 7
     cidExist <- doesDirectoryExist (objectPath ++ "/" ++ cid)
     if cidExist
-        then do 
+        then do
             cid2 <- generateCommitID
             return cid2
     else
@@ -56,51 +56,51 @@ createCommitDir m = do
     return cid
 
 createRootDir :: IO ()
-createRootDir = do 
+createRootDir = do
     createDirectory (objectPath ++ "/root")
     createCommitMeta (CommitID "root") "root of a history"
 
 
 -- getCommitID and getCommitMessage only for testing
 getCommitID :: CommitID -> IO CommitID
-getCommitID cid = do 
+getCommitID cid = do
     contents <- (decodeFileStrict (commitMetaPath cid)) :: IO (Maybe CommitMeta)
     let (Just (CommitMeta {commitId = cid2, message = m, date = d, childs = c, parents = p})) = contents
     return cid2
 
 getCommitMessage :: CommitID -> IO String
-getCommitMessage cid = do 
+getCommitMessage cid = do
     contents <- (decodeFileStrict (commitMetaPath cid)) :: IO (Maybe CommitMeta)
     let (Just (CommitMeta {commitId = cid2, message = m, date = d, childs = c, parents = p})) = contents
     return m
 
 getCommitDate :: CommitID -> IO String
-getCommitDate cid = do 
+getCommitDate cid = do
     contents <- (decodeFileStrict (commitMetaPath cid)) :: IO (Maybe CommitMeta)
     let (Just (CommitMeta {commitId = cid, message = m, date = d, childs = c, parents = p})) = contents
-    return show(d)
+    return (show d)
 
 getCommitChildsWithPath :: FilePath -> IO [CommitID]
-getCommitChildsWithPath fp = do 
+getCommitChildsWithPath fp = do
     contents <- ((decodeFileStrict fp) :: IO (Maybe CommitMeta))
     let (Just (CommitMeta {commitId = cid, message = m, date = d, childs = c, parents = p})) = contents
     return c
 
 getCommitParentsWithPath :: FilePath -> IO [CommitID]
-getCommitParentsWithPath fp = do 
+getCommitParentsWithPath fp = do
     contents <- ((decodeFileStrict fp) :: IO (Maybe CommitMeta))
     let (Just (CommitMeta {commitId = cid, message = m, date = d, childs = c, parents = p})) = contents
     return p
 
 setCommitChildsWithPath :: FilePath -> [CommitID] -> IO ()
-setCommitChildsWithPath fp cids = do 
+setCommitChildsWithPath fp cids = do
     contents <- ((decodeFileStrict fp) :: IO (Maybe CommitMeta))
     let (Just (CommitMeta {commitId = cid, message=m, date=d, childs=c, parents=p})) = contents
     let new = CommitMeta {commitId = cid, message=m, date=d, childs=cids, parents=p}
     B.writeFile fp (encode new)
 
 setCommitParentsWithPath :: FilePath -> [CommitID] -> IO ()
-setCommitParentsWithPath fp cids = do 
+setCommitParentsWithPath fp cids = do
     contents <- ((decodeFileStrict fp) :: IO (Maybe CommitMeta))
     let (Just (CommitMeta {commitId = cid, message=m, date=d, childs=c, parents=p})) = contents
     let new = CommitMeta {commitId = cid, message=m, date=d, childs=c, parents=cids}
@@ -119,7 +119,7 @@ setCommitChilds :: CommitID -> [CommitID] -> IO ()
 setCommitChilds cid cids = setCommitChildsWithPath (commitMetaPath cid) cids
 
 addCommitChilds :: CommitID -> [CommitID] -> IO ()
-addCommitChilds cid cids = do 
+addCommitChilds cid cids = do
     old <- getCommitChilds cid
     setCommitChilds cid $ old ++ cids
 

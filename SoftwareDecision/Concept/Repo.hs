@@ -1,8 +1,8 @@
 {-# LANGUAGE DeriveGeneric #-}
-module SoftwareDecision.Concept.Repo(RepoMetadata(..), createRepo, isRepo, 
-  getRemoteLeaf, getLocalLeaf, getHEAD, getRemoteHEAD, getPID, getRemotePID, 
-  RepoPath(..), getMRCA, copyRepo, getRemoteTrackedSet, getRemoteCommitChilds, 
-  getRemoteCommitParents, setHEAD) where
+module SoftwareDecision.Concept.Repo(RepoMetadata(..), createRepo, isRepo,
+  getRemoteLeaf, getLocalLeaf, getHEAD, getRemoteHEAD, getPID, getRemotePID,
+  RepoPath(..), getMRCA, copyRepo, getRemoteTrackedSet, getRemoteCommitChilds,
+  getRemoteCommitParents, setHEAD, getUpToHead) where
 
 import GHC.Generics
 import Data.Aeson
@@ -28,7 +28,7 @@ instance FromJSON RepoMetadata
 instance ToJSON RepoMetadata
 
 generateRepoID :: IO String
-generateRepoID = do 
+generateRepoID = do
    pid <- randomString (onlyAlphaNum randomASCII) 20
    return pid
 
@@ -42,7 +42,7 @@ createRepo = do
    createDirectory metaPath
    createDirectory tempPath
    p <- generateRepoID
-   let r = RepoMetadata {pid = p, head_ = (CommitID "root"), ts = []} 
+   let r = RepoMetadata {pid = p, head_ = (CommitID "root"), ts = []}
    B.writeFile repoMetaPath (encode r)
    createRootDir
 
@@ -63,7 +63,7 @@ getHEAD :: IO CommitID
 getHEAD = do
    contents <- B.readFile repoMetaPath
    let (Just (RepoMetadata {pid = p, head_ = h, ts = files})) = (decode contents) :: Maybe RepoMetadata
-   return h 
+   return h
 
 getLocalLeaf :: IO CommitID
 getLocalLeaf = do
@@ -71,7 +71,7 @@ getLocalLeaf = do
    childs <- (getCommitChilds head)
    if (length childs) == 0
     then return head
-    else do 
+    else do
       nx <- getNext head
       return nx
 
@@ -88,7 +88,7 @@ getNext x = do
 data RepoPath = LocalPath FilePath deriving (Show)
 
 copyRepo :: RepoPath -> IO ()
-copyRepo (LocalPath p) = do 
+copyRepo (LocalPath p) = do
    copyDir tempPath p
    renameDir (tempPath ++ "/" ++ (takeBaseName p)) remoteLoc
 
@@ -105,7 +105,7 @@ getRemoteHEAD :: IO CommitID
 getRemoteHEAD = do
    contents <- B.readFile $ remoteRepoMetaPath
    let (Just (RepoMetadata {pid = p, head_ = h, ts = files})) = (decode contents) :: Maybe RepoMetadata
-   return h 
+   return h
 
 getRemoteTrackedSet :: IO [String]
 getRemoteTrackedSet = do
@@ -134,18 +134,18 @@ setRemoteCommitParents :: CommitID -> [CommitID] -> IO ()
 setRemoteCommitParents cid cids = setCommitParentsWithPath (remoteCommitMetaPath cid) cids
 
 getRemoteCommitDate :: CommitID -> IO UTCTime
-getRemoteCommitDate cid = do 
+getRemoteCommitDate cid = do
    contents <- (decodeFileStrict (remoteCommitMetaPath cid)) :: IO (Maybe CommitMeta)
    let (Just (CommitMeta {commitId = cid, message = m, date = d, childs = c, parents = p})) = contents
    return d
 
 getRemoteLeaf :: IO CommitID
-getRemoteLeaf = do 
+getRemoteLeaf = do
    head <- getRemoteHEAD
    childs <- (getRemoteCommitChilds head)
    if (length childs) == 0
     then return head
-    else do 
+    else do
       nx <- getRemoteNext head
       return nx
 
@@ -158,7 +158,7 @@ getRemoteNext x = do
       nx <- getRemoteNext $ head childs
       return nx
 
--- get the most recent common ancestor, where the local commit and the remote one 
+-- get the most recent common ancestor, where the local commit and the remote one
 -- should have the same commitID
 
 getUpToHead :: IO [CommitID]
@@ -173,7 +173,7 @@ getUpToHeadRecursive lst = do
    else do
     lh <- getHEAD
     if foldl (&&) True ((/= lh) <$> childs)
-     then do 
+     then do
       result <- getUpToHeadRecursive $ lst ++ (sort childs)
       return result
      else return $ lst ++ [lh]
@@ -190,7 +190,7 @@ getUpToRemoteHeadRecursive lst = do
    else do
     rh <- getRemoteHEAD
     if foldl (&&) True ((/= rh) <$> childs)
-     then do 
+     then do
       result <- getUpToRemoteHeadRecursive $ lst ++ (sort childs)
       return result
      else return $ lst ++ [rh]
