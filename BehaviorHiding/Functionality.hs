@@ -12,7 +12,7 @@ performCat,
 performPull,
 performPush) where
 
-import System.Directory (doesDirectoryExist, getCurrentDirectory, doesFileExist, doesPathExist, listDirectory, copyFile, createDirectoryIfMissing)
+import System.Directory (doesDirectoryExist, getCurrentDirectory, doesFileExist, doesPathExist, listDirectory, copyFile, createDirectoryIfMissing, createFileLink)
 import System.Environment
 import System.Process
 import System.IO.Unsafe
@@ -126,6 +126,10 @@ performCommit msg = do
           mapM_ (\x -> createDirectoryIfMissing True (commit_path ++ "/" ++ (intercalate "/" (init (splitOn "/" x))))) trackedFiles
           mapM_ (\x -> copyFile (x) (commit_path ++ "/" ++ x)) trackedFiles
           -- Set HEAD
+          
+          setCommitChilds head_cid [commit_id]
+          setCommitParents commit_id [head_cid]
+
           setHEAD commit_id
           return "committed"
         else do
@@ -150,9 +154,10 @@ performCommit msg = do
           -- altered:
           let altered_files = filter (\x -> (unsafePerformIO (checkAltered head_cid (x)))) files_in_TS 
           mapM_ (\x->putStrLn("altered file: " ++ show(x))) altered_files
+          
           -- unaltered:
           let unaltered_files = filter (\x -> (not (unsafePerformIO (checkAltered head_cid (x))))) files_in_TS 
-          -- mapM_ (\x->putStrLn("unaltered file: " ++ show(x))) unaltered_files
+          mapM_ (\x->putStrLn("unaltered file: " ++ show(x))) unaltered_files
           
           -- deleted:
           let deleted_files = filter (\x -> (notElem (x) trackedFiles)) files_in_head
@@ -172,9 +177,14 @@ performCommit msg = do
               -- copy files
               mapM_ (\x -> createDirectoryIfMissing True (commit_path ++ "/" ++ (intercalate "/" (init (splitOn "/" x))))) new_files
               mapM_ (\x -> copyFile (x) (commit_path ++ "/" ++ x)) new_files
+              
               mapM_ (\x -> createDirectoryIfMissing True (commit_path ++ "/" ++ (intercalate "/" (init (splitOn "/" x))))) altered_files
               mapM_ (\x -> copyFile (x) (commit_path ++ "/" ++ x)) altered_files
 
+              mapM_ (\x -> createDirectoryIfMissing True (commit_path ++ "/" ++ (intercalate "/" (init (splitOn "/" x))))) unaltered_files
+              mapM_ (\x -> copyFile (x) (commit_path ++ "/" ++ x)) unaltered_files
+              -- mapM_ (\x -> createFileLink (x) (commit_path ++ "/" ++ x)) unaltered_files
+              
               -- update parents and children
               setCommitChilds head_cid [commit_id]
               setCommitParents commit_id [head_cid]
