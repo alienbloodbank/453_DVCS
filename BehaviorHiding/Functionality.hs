@@ -217,7 +217,6 @@ performSnapshotDiff dFiles = do
   let first = head dFiles
   return ()
 
-
 performDiff :: String -> String -> IO String
 performDiff revid1 revid2 = do
   doesExist <- isRepo
@@ -235,7 +234,6 @@ performDiff revid1 revid2 = do
               files2 <- listDirectory path2
               performSnapshotDiff $ getDiff files1 files2
               return ""
-
 
 
 
