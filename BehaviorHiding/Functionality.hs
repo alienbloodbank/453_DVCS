@@ -12,14 +12,14 @@ performCat,
 performPull,
 performPush) where
 
-import System.Directory (doesDirectoryExist, getCurrentDirectory, doesFileExist, doesPathExist, listDirectory, copyFile, createDirectoryIfMissing, createFileLink)
+import System.Directory (doesDirectoryExist, getCurrentDirectory, doesFileExist, doesPathExist, listDirectory, copyFile, createDirectoryIfMissing)
 import System.Environment
 import System.Process
 import System.IO.Unsafe
 import Data.List
 import Data.List.Split
 
-import SoftwareDecision.Concept.Commit (createCommitDir, getCommitFile, commitPath, addCommitChilds, setCommitChilds, setCommitParents, CommitID(..))
+import SoftwareDecision.Concept.Commit (createCommitDir, getCommitFile, commitPath, addCommitChilds, setCommitChilds, setCommitParents, CommitID(..), getCommitMessage)
 import SoftwareDecision.Concept.TrackedSet (addFile, removeFile, getTrackedSet, cleanTrackedSet)
 import SoftwareDecision.Concept.Repo
 import SoftwareDecision.Concept.MetaOrganization (dvcsPath)

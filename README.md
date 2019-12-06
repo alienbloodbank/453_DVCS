@@ -19,6 +19,9 @@ see the `.pdf` and `.png` files in the directory Group Discussion; it includes n
 ### Output
         - dvcs (binary file)
 
+### Test
+        - make test
+
 ### Development
         Changing any haskell source doesn't sometimes allow make to rebuild for some reason
         In that case run 'make clean' and then run 'make' 
