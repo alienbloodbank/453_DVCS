@@ -221,10 +221,10 @@ performSnapshotDiff dFiles compath1 compath2 = do
     let (hdiff:rest) = dFiles
     case hdiff of (First f) -> do 
                                  putStrLn f
-                                 putStrLn "File not existant in second commit\n"
+                                 putStrLn "File not existant in commit " ++ compath2 ++ "\n"
                   (Second f) -> do
                                  putStrLn f
-                                 putStrLn "File not existant in first commit\n"
+                                 putStrLn "File not existant in commit " ++ compath1 ++ "\n"
                   (Both a b) -> do
                                putStrLn a
                                _ <- system $ "diff " ++ (compath1 ++ "/" ++ a) ++ " " ++ (compath2 ++ "/" ++ b)
