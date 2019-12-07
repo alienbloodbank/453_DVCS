@@ -27,14 +27,12 @@ writeTS trackedSet = do
 
 addFile :: String -> IO ()
 addFile fileName = do
-   putStrLn fileName
    trackedSet <- readTS
    let newTrackedSet = List.nub $ fileName : trackedSet
    writeTS newTrackedSet
 
 removeFile :: String -> IO ()
 removeFile fileName = do
-   putStrLn fileName
    trackedSet <- readTS
    let newTrackedSet = List.delete fileName trackedSet
    writeTS newTrackedSet
@@ -44,20 +42,11 @@ getTrackedSet = do
    trackedSet <- readTS
    return trackedSet
 
--- HELPER FUNCTION 1 --
-removeNonExistantFiles :: [String] -> IO ()
-removeNonExistantFiles files = do
-   if files == [] then return ()
-   else do
-      let (file:res) = files
-      doesExist <- doesFileExist file
-      if doesExist then return ()
-      else do
-        removeFile file
-        removeNonExistantFiles res
-
 cleanTrackedSet :: IO ()
 cleanTrackedSet = do
    trackedSet <- readTS
-   removeNonExistantFiles trackedSet
+   mapM_ (\file -> do
+                    doesExist <- doesFileExist file
+                    if doesExist then return ()
+                    else removeFile file) trackedSet
    

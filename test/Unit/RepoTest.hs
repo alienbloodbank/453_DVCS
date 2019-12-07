@@ -1,15 +1,12 @@
 import Test.HUnit
 import System.Directory (createDirectory, doesDirectoryExist, removeDirectoryRecursive)
+import System.Process
 
-import BehaviorHiding.Functionality (performInit)
+import BehaviorHiding.Functionality
 import SoftwareDecision.Concept.TrackedSet
 import SoftwareDecision.Utility.DvcsInterface (copyDir)
-import SoftwareDecision.Concept.Commit (CommitID(..), createCommitDir, addCommitChilds, 
-    setCommitChilds, setCommitParents)
-
-import SoftwareDecision.Concept.Repo (RepoPath(..), copyRepo, getRemotePID, getRemoteLeaf,
-    getMRCA, getRemoteHEAD, getRemoteTrackedSet, getRemoteCommitChilds, 
-    getRemoteCommitParents, getPID, setHEAD)
+import SoftwareDecision.Concept.Commit
+import SoftwareDecision.Concept.Repo
 
 main = do
     -- build the test senario
@@ -21,19 +18,20 @@ main = do
     cid2 <- createCommitDir "branch 1"
     cid3 <- createCommitDir "branch 2"
     addCommitChilds cid1 [cid2]
-    let remote_path = "../test_repo"
+    let remote_path = "~/test_repo"
     remoteExist <- doesDirectoryExist remote_path
     if remoteExist 
         then print "the remote test repo already exists"
-        else createDirectory remote_path
+        else do _ <- system $ "mkdir " ++ remote_path
+                return ()
     setHEAD cid2
-    copyDir "../test_repo/" ".dvcs"
+    copyDir remote_path ".dvcs"
 
     setCommitChilds cid1 ([]::[CommitID])
     addCommitChilds cid1 [cid3]
     cid4 <- createCommitDir "branch 2 second"
     addCommitChilds cid3 [cid4]
-    copyRepo $ LocalPath "../test_repo"
+    copyRepo $ LocalPath remote_path
 
     -- begin testing
 
@@ -73,5 +71,3 @@ main = do
                          TestLabel "test7_1" test7_1]
     runTestTT tests
 
-    removeDirectoryRecursive remote_path
-    removeDirectoryRecursive "./.dvcs"

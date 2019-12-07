@@ -4,12 +4,12 @@ import System.Process
 
 downloadRemoteDir :: String -> IO ()
 downloadRemoteDir remotePath = do
-   _ <- readProcess "scp" ["-r", remotePath, "."] ""
+   _ <- readProcess "scp" ["-q", "-r", remotePath, "."] ""
    return () 
 
 uploadRemoteDir :: String -> IO ()
 uploadRemoteDir remotePath = do
-   _ <- system $ "scp -r * " ++ remotePath
+   _ <- system $ "scp -q -r * " ++ remotePath
    return ()
 
 doesRemoteDirExist :: String -> String -> IO Bool
