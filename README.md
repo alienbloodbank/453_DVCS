@@ -7,11 +7,11 @@ see the `.pdf` and `.png` files in the directory Group Discussion; it includes n
 ![Max Wasserman](https://www.cs.rochester.edu/people/graduate/assets/images/wasserman_max.jpg?1575253267788)
 
 ### Module Delegation
-- TianCheng Xu: Commit, Pull, Push, Diff in Functionality Module
-- Andrew Sexton: Status, Heads, Log, Checkout, Cat in Functionality Module
+- TianCheng Xu: Commit, Pull, Push in Functionality Module
+- Andrew Sexton: Heads, Log, Checkout, Cat in Functionality Module
 - Ziliang Lin: Repo(remote part), CommitConcept and MetaOrganization in SoftwareDecision/Concept, DvcsInterface in SoftwareDecision/Utility
 - Soubhik Ghosh: Trackset, Repo in SoftwareDecision/Concept, Communication in SoftwareDecision,
-                 Add, Remove, Clone, Init in Functionality Module
+                 Add, Remove, Clone, Init, Status, Diff in Functionality Module
 
 ### Install Dependencies
         - make install
