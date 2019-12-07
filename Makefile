@@ -20,9 +20,18 @@ install:
 
 test: $(TESTS)
 	$(CLEANUP_TEST)
+	
+	@echo "\nRunning tests for SoftwareDecision.Concept.Repo Module ...\n"
 	runhaskell test/Unit/RepoTest.hs;$(CLEANUP_TEST)
+	
+	@echo "\nRunning tests for SoftwareDecision.Concept.Commit Module ...\n"
 	runhaskell test/Unit/CommitTest.hs;$(CLEANUP_TEST)
+	
+	@echo "\nRunning tests for SoftwareDecision.Concept.TrackedSet Module ...\n"
 	runhaskell test/Unit/TrackedSetTest.hs;$(CLEANUP_TEST)
+	
+	@echo "\nRunning tests for SoftwareDecision.Communication Module ...\n"
+	@echo "NOTE: You have to enter credentials 3 times for the 3 tests in Communication Module\n"
 	runhaskell test/Unit/CommunicationTest.hs;$(CLEANUP_TEST)
 
 clean:
