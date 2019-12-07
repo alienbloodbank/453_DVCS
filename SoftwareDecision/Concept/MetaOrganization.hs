@@ -1,4 +1,15 @@
-module SoftwareDecision.Concept.MetaOrganization where
+module SoftwareDecision.Concept.MetaOrganization (
+dvcsName, 
+historyPath, 
+remoteRepoMetaPath, 
+remoteLoc, 
+tempPath, 
+dvcsPath, 
+repoMetaPath, 
+objectRelativePath, 
+objectPath, 
+metaRelativePath,
+metaPath) where
 
 -- the structure/organization of the metadata
 dvcsName = "dvcs"

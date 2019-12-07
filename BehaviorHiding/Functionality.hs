@@ -1,4 +1,5 @@
-module BehaviorHiding.Functionality(performInit,
+module BehaviorHiding.Functionality(
+performInit,
 performClone,
 performAdd,
 performRemove,
@@ -20,10 +21,10 @@ import Data.List
 import Data.List.Split
 import Data.Algorithm.Diff
 
-import SoftwareDecision.Concept.Commit (createCommitDir, getCommitFile, getCommitMessage, getCommitDate, getCommitParents, commitPath, addCommitChilds, setCommitChilds, setCommitParents, CommitID(..))
-import SoftwareDecision.Concept.TrackedSet (addFile, removeFile, getTrackedSet, cleanTrackedSet)
+import SoftwareDecision.Concept.Commit
+import SoftwareDecision.Concept.TrackedSet
 import SoftwareDecision.Concept.Repo
-import SoftwareDecision.Concept.MetaOrganization (dvcsPath)
+import SoftwareDecision.Concept.MetaOrganization
 import SoftwareDecision.Utility.DvcsInterface
 import SoftwareDecision.Communication
 
@@ -95,9 +96,10 @@ performStatus = do
    Prelude.mapM_ putStrLn trackedFiles
    putStrLn "\nUntracked files:"
    allFiles <- listDirectory "."
-   Prelude.mapM_ putStrLn (allFiles \\ trackedFiles)
+   Prelude.mapM_ putStrLn ((Data.List.delete ".dvcs"  allFiles) \\ trackedFiles)
    return "success"
 
+------------------------------------
 checkAltered :: CommitID -> String -> IO Bool
 checkAltered head_cid file_name = do
     head_file_c <- (getCommitFile head_cid file_name)
@@ -194,7 +196,6 @@ performCommit msg = do
               setHEAD commit_id
               return "committed"
 
--- TODO --
 ------------------------------------
 performHeads :: IO String
 performHeads = do
@@ -204,18 +205,31 @@ performHeads = do
     commit_head <- getHEAD
     if commit_head == (CommitID "root") then return "fatal: no commits in current repository."
     else do
-      putStr $ "commit: " ++ (getStr commit_head) ++ "\n"
+      putStrLn $ "Commit: " ++ (getStr commit_head)
       message <- getCommitMessage commit_head
       -- time <- getCommitDate head
-      putStr $ "message: " ++ message
+      putStrLn $ "Message: " ++ message
       time <- getCommitDate commit_head
-      putStr $ "time: " ++ time
-      return ""
+      putStrLn $ "Time: " ++ time ++ "\n"
+      return "Heads shown"
 
-performSnapshotDiff :: [Diff String] -> IO()
-performSnapshotDiff dFiles = do
-  let first = head dFiles
-  return ()
+------------------------------------
+performSnapshotDiff :: [Diff String] -> String -> String -> IO ()
+performSnapshotDiff dFiles compath1 compath2 = do
+  if dFiles == [] then return ()
+  else do
+    let (hdiff:rest) = dFiles
+    case hdiff of (First f) -> do 
+                                 putStrLn f
+                                 putStrLn "File not existant in second commit\n"
+                  (Second f) -> do
+                                 putStrLn f
+                                 putStrLn "File not existant in first commit\n"
+                  (Both a b) -> do
+                               putStrLn a
+                               _ <- system $ "diff " ++ (compath1 ++ "/" ++ a) ++ " " ++ (compath2 ++ "/" ++ b)
+                               putStrLn ""
+    performSnapshotDiff rest compath1 compath2
 
 performDiff :: String -> String -> IO String
 performDiff revid1 revid2 = do
@@ -232,11 +246,10 @@ performDiff revid1 revid2 = do
             else do
               files1 <- listDirectory path1
               files2 <- listDirectory path2
-              performSnapshotDiff $ getDiff files1 files2
-              return ""
+              performSnapshotDiff (getDiff (Data.List.delete commitMetaName files1) (Data.List.delete commitMetaName files2)) path1 path2
+              return "Diff shown"
 
-
-
+--------------------------------------
 logHelper :: [CommitID] -> IO [(String, String, String)]
 logHelper commit_list = do
   if commit_list == [] then return []
@@ -260,12 +273,14 @@ performLog = do
       commit_list <- getUpToHead
       let com_list = tail commit_list
       commit_info <- logHelper com_list
+      let (x, y, z):rest = commit_info
+      let u_commit_info = (x ++ " (HEAD)", y, z):rest
       mapM_ (\(x,y,z) -> putStrLn $ "Commit: " ++ x ++ "\n" ++
                                     "Message: " ++ y ++ "\n" ++
-                                    "Commit Time: " ++ z ++ "\n") commit_info
-      --Prints extra line on return--
-      return ""
+                                    "Time: " ++ z ++ "\n") commit_info
+      return "Log shown"
 
+--------------------------------------
 performCheckout :: String -> IO String
 performCheckout revid = do
   doesExist <- isRepo
@@ -278,6 +293,7 @@ performCheckout revid = do
       setHEAD (CommitID revid)
       return ("Head successfully changed to " ++ revid)
 
+--------------------------------------
 performCat :: String -> String -> IO String
 performCat revid file = do
   doesExist <- isRepo
@@ -289,8 +305,10 @@ performCat revid file = do
     else do
       cur_file <- getCommitFile (CommitID revid) file
       putStr cur_file
-      return ""
+      return "Cat output"
 
+-- TODO --
+--------------------------------------
 performPull :: String -> IO String
 performPull repo_path = do return "Pulled"
 

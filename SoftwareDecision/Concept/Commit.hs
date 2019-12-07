@@ -1,6 +1,29 @@
 {-# LANGUAGE DeriveGeneric #-}
 
-module SoftwareDecision.Concept.Commit where
+module SoftwareDecision.Concept.Commit(
+CommitID(..),
+CommitMeta(..),
+commitMetaName,
+commitPath,
+commitMetaPath,
+createCommitMeta,
+generateCommitID,
+createCommitDir,
+createRootDir,
+getCommitID,
+getCommitMessage,
+getCommitDate,
+getCommitChildsWithPath,
+getCommitParentsWithPath,
+setCommitChildsWithPath,
+setCommitParentsWithPath,
+getCommitChilds,
+getCommitParents,
+getCommitFile,
+setCommitChilds,
+addCommitChilds,
+setCommitParents
+) where
 
 import System.Directory
 import Data.Time

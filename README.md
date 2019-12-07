@@ -13,6 +13,9 @@ see the `.pdf` and `.png` files in the directory Group Discussion; it includes n
 - Soubhik Ghosh: Trackset, Repo in SoftwareDecision/Concept, Communication in SoftwareDecision,
                  Add, Remove, Clone, Init in Functionality Module
 
+### Install Dependencies
+        - make install
+
 ### Build Instructions:
         - make (Fire "make" command)
 
@@ -28,9 +31,15 @@ see the `.pdf` and `.png` files in the directory Group Discussion; it includes n
 
 ### Running Examples:
         - ./dvcs init
-        - ./dvcs add <file1>
-        - ./dvcs remove <file1> <file2>
+        - ./dvcs add <file> # Only adds files!
+        - ./dvcs remove <file>
         - ./dvcs status
         - ./dvcs clone <path>
+        - ./dvcs commit <message>
+        - ./dvcs heads
+        - ./dvcs log
+        - ./dvcs diff <commit_id1> <commit_id2>
+        - ./dvcs cat <commit_id> <file>
+        - ./dvcs checkout <commit_id>
         
       
