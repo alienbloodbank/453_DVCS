@@ -94,10 +94,10 @@ performStatus = do
    else do
    trackedFiles <- getTrackedSet
    putStrLn "Tracked files:"
-   Prelude.mapM_ putStrLn trackedFiles
+   mapM_ putStrLn trackedFiles
    putStrLn "\nUntracked files:"
    allFiles <- listDirectory "."
-   Prelude.mapM_ putStrLn ((Data.List.delete ".dvcs"  allFiles) \\ trackedFiles)
+   mapM_ putStrLn ((Data.List.delete ".dvcs"  allFiles) \\ trackedFiles)
    return "success"
 
 ------------------------------------
@@ -215,23 +215,6 @@ performHeads = do
       return "Heads shown"
 
 ------------------------------------
-performSnapshotDiff :: [Diff String] -> String -> String -> IO ()
-performSnapshotDiff dFiles compath1 compath2 = do
-  if dFiles == [] then return ()
-  else do
-    let (hdiff:rest) = dFiles
-    case hdiff of (First f) -> do 
-                                 putStrLn f
-                                 putStrLn $ "File not existant in commit " ++ (takeBaseName compath2) ++ "\n"
-                  (Second f) -> do
-                                 putStrLn f
-                                 putStrLn $ "File not existant in commit " ++ (takeBaseName compath1) ++ "\n"
-                  (Both a b) -> do
-                               putStrLn a
-                               _ <- system $ "diff " ++ (compath1 ++ "/" ++ a) ++ " " ++ (compath2 ++ "/" ++ b)
-                               putStrLn ""
-    performSnapshotDiff rest compath1 compath2
-
 performDiff :: String -> String -> IO String
 performDiff revid1 revid2 = do
   doesExist <- isRepo
@@ -247,22 +230,21 @@ performDiff revid1 revid2 = do
             else do
               files1 <- listDirectory path1
               files2 <- listDirectory path2
-              performSnapshotDiff (getDiff (Data.List.delete commitMetaName files1) (Data.List.delete commitMetaName files2)) path1 path2
+              let dFiles = getDiff (Data.List.delete commitMetaName files1) (Data.List.delete commitMetaName files2)
+              mapM_ (\snap -> case snap of 
+                                       (First f) -> do
+                                                      putStrLn f
+                                                      putStrLn $ "File not existant in second commit " ++ (takeBaseName path2) ++ "\n"
+                                       (Second f) -> do
+                                                      putStrLn f
+                                                      putStrLn $ "File not existant in first commit " ++ (takeBaseName path1) ++ "\n"
+                                       (Both a b) -> do
+                                                      putStrLn a
+                                                      _ <- system $ "diff " ++ (path1 ++ "/" ++ a) ++ " " ++ (path2 ++ "/" ++ b)
+                                                      putStrLn "") dFiles
               return "Diff shown"
 
 --------------------------------------
-logHelper :: [CommitID] -> IO [(String, String, String)]
-logHelper commit_list = do
-  if commit_list == [] then return []
-  else do
-    let (first:rest) = commit_list
-    commit_message <- getCommitMessage first
-    commit_date <- getCommitDate first
-    let (cid, message, time) = (getStr first, commit_message, commit_date)
-    partial <- logHelper rest
-    return ((cid, message, time):partial)
-
-
 performLog :: IO String
 performLog = do
   doesExist <- isRepo
@@ -272,13 +254,14 @@ performLog = do
     if commit_head == (CommitID "root") then return "fatal: no commits in current repository."
     else do
       commit_list <- getUpToHead
-      let com_list = tail commit_list
-      commit_info <- logHelper com_list
-      let (x, y, z):rest = commit_info
-      let u_commit_info = (x ++ " (HEAD)", y, z):rest
-      mapM_ (\(x,y,z) -> putStrLn $ "Commit: " ++ x ++ "\n" ++
-                                    "Message: " ++ y ++ "\n" ++
-                                    "Time: " ++ z ++ "\n") commit_info
+      let com_list = tail commit_list 
+      putStrLn "(HEAD)"
+      mapM_ (\com -> do
+                     commit_message <- getCommitMessage com
+                     commit_date <- getCommitDate com
+                     putStrLn $ "Commit: " ++ (getStr com) ++ "\n" ++
+                                "Message: " ++ commit_message ++ "\n" ++
+                                "Time: " ++ commit_date ++ "\n") com_list
       return "Log shown"
 
 --------------------------------------
