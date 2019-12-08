@@ -1,5 +1,5 @@
 import Test.HUnit
-import System.Directory (createDirectory, doesDirectoryExist, removeDirectoryRecursive)
+import System.Directory (createDirectory, doesDirectoryExist, removeDirectoryRecursive, getHomeDirectory)
 import System.Process
 
 import BehaviorHiding.Functionality
@@ -12,6 +12,7 @@ main = do
     -- build the test senario
     performInit
     addFile "dvcs.hs"
+    homeDir <- getHomeDirectory
     cid1 <- createCommitDir "mrca"
     addCommitChilds (CommitID "root") [cid1]
     setCommitParents cid1 [CommitID "root"] 
@@ -22,8 +23,7 @@ main = do
     remoteExist <- doesDirectoryExist remote_path
     if remoteExist 
         then print "the remote test repo already exists"
-        else do _ <- system $ "mkdir " ++ remote_path
-                return ()
+        else createDirectory $ homeDir ++ "/test_repo"
     setHEAD cid2
     copyDir remote_path ".dvcs"
 

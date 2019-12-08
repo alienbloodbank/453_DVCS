@@ -4,10 +4,23 @@ module BehaviorHiding.UserInteraction(parse) where
 import BehaviorHiding.Functionality
 
 validCommands :: [String]
-validCommands = ["init", "clone", "add", "remove", "status", "heads", "diff", "cat", "checkout", "commit", "log", "merge", "pull", "push"]
+validCommands = ["help", "init", "clone", "add", "remove", "status", "heads", "diff", "cat", "checkout", "commit", "log", "merge", "pull", "push"]
 
 -- Ignores extra arguments everywhere
 postProcess :: String -> [String] -> IO String
+postProcess "help" _ = do
+   return $ "usage:\n\n" ++
+          "- ./dvcs init\n" ++
+          "- ./dvcs add <file> # Only adds files!\n" ++
+          "- ./dvcs remove <file>\n" ++
+          "- ./dvcs status\n" ++
+          "- ./dvcs clone <path>\n" ++
+          "- ./dvcs commit <message>\n" ++
+          "- ./dvcs heads\n" ++
+          "- ./dvcs log\n" ++
+          "- ./dvcs diff <commit_id1> <commit_id2>\n" ++
+          "- ./dvcs cat <commit_id> <file>\n" ++
+          "- ./dvcs checkout <commit_id>\n"
 postProcess "init" args = do
    msg <- performInit
    return msg
@@ -22,19 +35,19 @@ postProcess "add" args = do
      msg <- performAdd (args !! 0)
      return msg
 postProcess "remove" args = do
-   if args == [] then return "usage: dvcs rm <file>..."
+   if args == [] then return "Nothing specified, nothing removed."
    else do 
      msg <- performRemove (args !! 0)
      return msg
-postProcess "status" args = do 
-   performStatus
-   return "List of tracked and untracked files" 
-postProcess "heads" args = do
+postProcess "status" _ = do 
+   msg <- performStatus
+   return msg
+postProcess "heads" _ = do
    msg <- performHeads
    return msg
 postProcess "diff" args = do
-   if args == [] then return "No revisions provided"
-   else if (length args) == 1 then return "No second revision to diff against"
+   if args == [] then return "No commits provided"
+   else if (length args) == 1 then return "No second commit to diff against"
    else do
      msg <- performDiff (args !! 0) (args !! 1)
      return msg
@@ -42,7 +55,7 @@ postProcess "log" args = do
    msg <- performLog
    return msg
 postProcess "checkout" args = do
-   if args == [] then return "No revision provided to checkout"
+   if args == [] then return "No commit id provided to checkout"
    else do 
      msg <- performCheckout (args !! 0)
      return msg
@@ -52,7 +65,8 @@ postProcess "commit" args = do
      msg <- performCommit (args !! 0)
      return msg
 postProcess "cat" args = do
-   if (length args) == 0 || (length args) == 1 then return "No filename given, no commit_id given"
+   if (length args) == 0 then return "No filename given, no commit id given"
+   else if (length args) == 1 then return "No filename given"
    else do 
      msg <- performCat (args !! 0) (args !! 1)
      return msg
@@ -68,10 +82,10 @@ postProcess "push" args = do
      return msg
 
 parse :: [String] -> IO String
-parse [] = do return "usage: dvcs <command> [<args>]"
+parse [] = do return "usage: dvcs <command> [<args>]. See 'dvcs help'"
 parse (command: res) = do
     if (command `elem` validCommands)
     then do 
        msg <- (postProcess command res)
        return msg
-       else return ("dvcs: " ++ command ++ " is not a dvcs command. See 'dvcs --help’")
+       else return ("dvcs: " ++ command ++ " is not a dvcs command. See 'dvcs help’")

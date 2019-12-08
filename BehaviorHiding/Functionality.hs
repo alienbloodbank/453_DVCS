@@ -33,11 +33,10 @@ performInit :: IO String
 performInit = do
    doesRepoAlreadyExist <- isRepo
    cd <- getCurrentDirectory
-   if doesRepoAlreadyExist then return ("Reinitialized existing dvcs repository in " ++ cd)
-   else do
+   if doesRepoAlreadyExist then return $ "Reinitialized existing dvcs repository in " ++ cd
+   else do 
       createRepo
-      -- create root commit
-      return "Initialized repo"
+      return $ "Initialized repository in " ++ cd
 
 ------------------------------------
 performClone :: String -> IO String
@@ -47,15 +46,15 @@ performClone repoPath = do
      doesRepoExist <- doesDirectoryExist $ repoPath ++ "/" ++ dvcsPath
      if doesRepoExist then do
         copyDir repoPath "."
-        return "Cloned local repo"
-     else return "Local directory doesn't seen to be valid repository"
+        return "Cloned local repository"
+     else return "Local directory is not a valid repository"
    else do
      let (hostname, remoteRepo) = break (==':') repoPath
      doesRepoExist <- doesRemoteDirExist hostname ((tail remoteRepo) ++ "/" ++ dvcsPath)
      if doesRepoExist then do
         downloadRemoteDir repoPath
-        return "Cloned remote repo"
-     else return "Remote directory doesn't seen to be valid repository"
+        return "Cloned remote repository"
+     else return "Remote directory is not a valid repository"
 
 ------------------------------------
 performAdd :: String -> IO String
@@ -66,10 +65,10 @@ performAdd file = do
      inCD <- doesFileExist file
      trackedFiles <- getTrackedSet
      if not(inCD) then do
-       if (file `notElem` trackedFiles) then return "fatal: File does not exist in CD"
+       if (file `notElem` trackedFiles) then return "fatal: File does not exist in current directory"
        else do
          removeFile file
-         return "File removed as its not in CD"
+         return "File removed as its not in current directory"
      else do
        addFile file
        return "File added"
@@ -84,7 +83,7 @@ performRemove file = do
      if (file `notElem` trackedFiles) then return "Error: File not being tracked. Nothing to remove"
      else do
          removeFile file
-         return $ file ++ " removed"
+         return "File removed"
 
 ------------------------------------
 performStatus :: IO String
@@ -98,7 +97,7 @@ performStatus = do
    putStrLn "\nUntracked files:"
    allFiles <- listDirectory "."
    mapM_ putStrLn ((Data.List.delete ".dvcs"  allFiles) \\ trackedFiles)
-   return "success"
+   return "\nRepository status"
 
 ------------------------------------
 checkAltered :: CommitID -> String -> IO Bool
@@ -110,9 +109,11 @@ checkAltered head_cid file_name = do
 
 performCommit :: String -> IO String
 performCommit msg = do
+  doesExist <- isRepo
+  if not(doesExist) then return "fatal: not a dvcs repository .dvcs"
+  else do
   trackedFiles <- getTrackedSet
-
-  if (length trackedFiles) == 0
+  if trackedFiles == []
     then return "Nothing to commit: tracked set empty"
     else do
       cleanTrackedSet -- remove files from TS if not in CD
@@ -135,7 +136,7 @@ performCommit msg = do
           setCommitParents commit_id [head_cid]
 
           setHEAD commit_id
-          return "committed"
+          return "Committed"
         else do
           -- TODO:
           -- (*) check if there are new changes to commit:
@@ -152,16 +153,16 @@ performCommit msg = do
           -- Get files in different states:
           -- new:
           let new_files = filter (\x -> (notElem (x) files_in_head)) trackedFiles
-          mapM_ (\x->putStrLn("new file: " ++ show(x))) new_files
+          mapM_ (\x -> putStrLn("New file: " ++ show(x))) new_files
 
           let files_in_TS = filter (\x -> (elem x files_in_head)) trackedFiles
           -- altered:
           let altered_files = filter (\x -> (unsafePerformIO (checkAltered head_cid (x)))) files_in_TS
-          mapM_ (\x->putStrLn("altered file: " ++ show(x))) altered_files
+          mapM_ (\x -> putStrLn("Altered file: " ++ show(x))) altered_files
 
           -- unaltered:
           let unaltered_files = filter (\x -> (not (unsafePerformIO (checkAltered head_cid (x))))) files_in_TS
-          mapM_ (\x->putStrLn("unaltered file: " ++ show(x))) unaltered_files
+          mapM_ (\x -> putStrLn("Unaltered file: " ++ show(x))) unaltered_files
 
           -- deleted:
           let deleted_files = filter (\x -> (notElem (x) trackedFiles)) files_in_head
@@ -169,14 +170,14 @@ performCommit msg = do
           if ((length new_files) == 0) && ((length altered_files) == 0)
             then do
               putStrLn "No altered or new files: nothing to commit"
-              return "not committed"
+              return "Not Committed"
             else do
               -- create a new commit
               commit_id <- createCommitDir msg
               -- set parents and children
 
               let commit_path = (commitPath commit_id)
-              putStrLn ("commit path: " ++ commit_path)
+              putStrLn ("Commit path: " ++ commit_path)
 
               -- copy files
               mapM_ (\x -> createDirectoryIfMissing True (commit_path ++ "/" ++ (intercalate "/" (init (splitOn "/" x))))) new_files
@@ -195,7 +196,7 @@ performCommit msg = do
 
               -- update HEAD
               setHEAD commit_id
-              return "committed"
+              return "Committed"
 
 ------------------------------------
 performHeads :: IO String
@@ -208,7 +209,6 @@ performHeads = do
     else do
       putStrLn $ "Commit: " ++ (getStr commit_head)
       message <- getCommitMessage commit_head
-      -- time <- getCommitDate head
       putStrLn $ "Message: " ++ message
       time <- getCommitDate commit_head
       putStrLn $ "Time: " ++ time ++ "\n"
@@ -262,7 +262,7 @@ performLog = do
                      putStrLn $ "Commit: " ++ (getStr com) ++ "\n" ++
                                 "Message: " ++ commit_message ++ "\n" ++
                                 "Time: " ++ commit_date ++ "\n") com_list
-      return "Log shown"
+      return "Commit history"
 
 --------------------------------------
 performCheckout :: String -> IO String
@@ -288,8 +288,7 @@ performCat revid file = do
     if not(isPath) then return "fatal: invalid commit id."
     else do
       cur_file <- getCommitFile (CommitID revid) file
-      putStr cur_file
-      return "Cat output"
+      return cur_file
 
 -- TODO --
 --------------------------------------

@@ -20,19 +20,26 @@ install:
 
 test: $(TESTS)
 	$(CLEANUP_TEST)
-	
+
 	@echo "\nRunning tests for SoftwareDecision.Concept.Repo Module ...\n"
 	runhaskell test/Unit/RepoTest.hs;$(CLEANUP_TEST)
-	
+
 	@echo "\nRunning tests for SoftwareDecision.Concept.Commit Module ...\n"
 	runhaskell test/Unit/CommitTest.hs;$(CLEANUP_TEST)
-	
+
 	@echo "\nRunning tests for SoftwareDecision.Concept.TrackedSet Module ...\n"
 	runhaskell test/Unit/TrackedSetTest.hs;$(CLEANUP_TEST)
-	
+
 	@echo "\nRunning tests for SoftwareDecision.Communication Module ...\n"
 	@echo "NOTE: You have to enter credentials 3 times for the 3 tests in Communication Module\n"
 	runhaskell test/Unit/CommunicationTest.hs;$(CLEANUP_TEST)
+
+	@echo "\nRunning tests for BehaviorHiding.Functionality Module ...\n"
+	@echo "NOTE: You have to enter credentials 2 times for the dvcs clone tests\n"
+	runhaskell test/Unit/FunctionalityTest.hs;$(CLEANUP_TEST)
+
+	@echo "\nRunning tests for BehaviorHiding.UserInteraction Module ...\n"
+	runhaskell test/Unit/UserInteractionTest.hs;$(CLEANUP_TEST)
 
 clean:
 	rm -rf $(TARGET) .dvcs

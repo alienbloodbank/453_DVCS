@@ -1,7 +1,7 @@
 import Test.HUnit
 import System.Process
 import System.Posix.User
-import System.Directory (doesDirectoryExist, setCurrentDirectory, doesFileExist, getHomeDirectory)
+import System.Directory (doesDirectoryExist, setCurrentDirectory, doesFileExist, getHomeDirectory, createDirectory)
 import BehaviorHiding.Functionality
 import SoftwareDecision.Utility.DvcsInterface (copyDir)
 import SoftwareDecision.Communication
@@ -18,8 +18,7 @@ main = do
     remoteExist <- doesDirectoryExist remote_path
     if remoteExist
         then print "the remote test repo already exists"
-        else do _ <- system $ "mkdir " ++ remote_path
-                return ()
+        else createDirectory $ homeDir ++ "/test_repo"
     copyDir remote_path ".dvcs"
     
     username <- getLoginName
