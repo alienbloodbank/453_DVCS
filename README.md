@@ -27,11 +27,12 @@ see the `.pdf` and `.png` files in the directory Group Discussion; it includes n
 
 ### Development
         Changing any haskell source doesn't sometimes allow make to rebuild for some reason
-        In that case run 'make clean' and then run 'make' 
+        In that case run 'make clean' and then run 'make'.
+        Running 'make clean' also removes the .dvcs folder.
 
 ### Running Examples:
         - ./dvcs init
-        - ./dvcs add <file> # Only adds files!
+        - ./dvcs add <file> # Only adds text files!
         - ./dvcs remove <file>
         - ./dvcs status
         - ./dvcs clone <path>
