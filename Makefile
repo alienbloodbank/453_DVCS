@@ -15,6 +15,7 @@ dvcs: $(SOURCES)
 	$(GHC) $(DRIVER)
 
 install:
+	cabal update
 	cabal install Diff-0.4.0 aeson-1.4.6.0 random-strings-0.1.1.0
 	sudo apt-get install ssh
 
