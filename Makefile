@@ -5,6 +5,8 @@ TESTS = $(wildcard test/Unit/*.hs)
 DRIVER = dvcs.hs
 TARGET = dvcs
 
+DEPENDENCIES = Diff-0.4.0 aeson-1.4.6.0 random-strings-0.1.1.0 directory
+
 CLEANUP_TEST = rm -rf .dvcs ~/test_repo
 
 .PHONY: test
@@ -15,8 +17,9 @@ dvcs: $(SOURCES)
 	$(GHC) $(DRIVER)
 
 install:
+	@echo "This may take some time. Please be patient ...\n"
 	cabal update
-	cabal install Diff-0.4.0 aeson-1.4.6.0 random-strings-0.1.1.0
+	cabal install $(DEPENDENCIES)
 	sudo apt-get install ssh
 
 test: $(TESTS)
