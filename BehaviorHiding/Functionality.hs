@@ -112,12 +112,14 @@ performCommit msg = do
   doesExist <- isRepo
   if not(doesExist) then return "fatal: not a dvcs repository .dvcs"
   else do
+  cleanTrackedSet -- remove files from TS if not in CD
   trackedFiles <- getTrackedSet
   if trackedFiles == []
-    then return "Nothing to commit: tracked set empty"
+    then return "Nothing to commit: tracked set empty or tracked file(s) not in current directory."
     else do
       cleanTrackedSet -- remove files from TS if not in CD
       trackedFiles <- getTrackedSet
+
       head_cid <- getHEAD
       -- putStrLn(getStr head_cid) -- print out HEAD
 
