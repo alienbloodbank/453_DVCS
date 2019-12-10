@@ -117,6 +117,7 @@ performCommit msg = do
     then return "Nothing to commit: tracked set empty"
     else do
       cleanTrackedSet -- remove files from TS if not in CD
+      trackedFiles <- getTrackedSet
       head_cid <- getHEAD
       -- putStrLn(getStr head_cid) -- print out HEAD
 
