@@ -31,7 +31,7 @@ see the `.pdf` and `.png` files in the directory Group Discussion; it includes n
         Running 'make clean' also removes the .dvcs folder.
 
 ### Running Examples:
-(Remember to give absolute path to the dvcs binary if testing in a different folder)
+        (Remember to give absolute path to the dvcs binary if testing in a different folder)
         - ./dvcs init
         - ./dvcs add <file> # Only adds text files!
         - ./dvcs remove <file>
