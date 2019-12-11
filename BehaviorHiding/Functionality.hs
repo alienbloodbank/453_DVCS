@@ -13,7 +13,7 @@ performCat,
 performPull,
 performPush) where
 
-import System.Directory (doesDirectoryExist, getCurrentDirectory, doesFileExist, doesPathExist, listDirectory, copyFile, createDirectoryIfMissing)
+import System.Directory (setCurrentDirectory, doesDirectoryExist, getCurrentDirectory, doesFileExist, doesPathExist, listDirectory, copyFile, createDirectoryIfMissing)
 import System.Environment
 import System.Process
 import System.IO.Unsafe
@@ -29,6 +29,20 @@ import SoftwareDecision.Concept.Repo
 import SoftwareDecision.Concept.MetaOrganization
 import SoftwareDecision.Utility.DvcsInterface
 import SoftwareDecision.Communication
+
+
+listDirectoryRecursive :: FilePath -> IO [FilePath]
+listDirectoryRecursive filePath = do
+   files <- listDirectory filePath
+   let filteredFiles = filter (\f -> not . or $ [f == ".git", f == ".dvcs"]) files
+   filesOnly <- foldM (\acc x -> do
+                               isFile <- doesFileExist $ filePath ++ "/" ++ x
+                               if isFile then return (x:acc)
+                               else do
+                                   files_ <- listDirectoryRecursive $ filePath ++ "/" ++ x
+                                   let withPath = map (\f -> x ++ "/" ++ f) files_
+                                   return $ withPath ++ acc) [] filteredFiles
+   return filesOnly
 
 performInit :: IO String
 performInit = do
@@ -64,7 +78,6 @@ performAdd file = do
    if not(doesExist) then return "fatal: not a dvcs repository .dvcs"
    else do
      inCD <- doesFileExist file
-     -- Check if its a file and not a directory before adding
      trackedFiles <- getTrackedSet
      if not(inCD) then do
        if (file `notElem` trackedFiles) then return "fatal: File does not exist in current directory"
@@ -108,9 +121,12 @@ performStatus = do
                                       putStrLn "Tracked files that no longer exist!:"
                                       mapM_ putStrLn deletedFiles
                                       putStrLn ""
-   allFiles <- listDirectory "."
-   let allImpFiles = Data.List.delete ".dvcs"  allFiles
-   let untrackedFiles = allImpFiles \\ trackedFiles
+   --commit_head <- getHEAD
+   --let com_path = commitPath commit_head
+       
+
+   allFiles <- listDirectoryRecursive "."
+   let untrackedFiles = allFiles \\ trackedFiles
    _ <- case untrackedFiles of [] -> putStrLn "Nothing is untracked!\n"
                                _ -> do
                                       putStrLn "Untracked files:"
@@ -164,7 +180,7 @@ performCommit msg = do
           -- (*) check if there are new changes to commit:
 
           -- Get files (names only) of the HEAD commit
-          files_in_head_io <- (listDirectory (commitPath head_cid))
+          files_in_head_io <- (listDirectoryRecursive (commitPath head_cid))
           let files_in_head = filter (/= "commitMeta.json") files_in_head_io
           -- mapM_ (\x->putStrLn(show(x))) files_in_head -- for DEBUG use: print out these files
 
@@ -250,8 +266,8 @@ performDiff revid1 revid2 = do
         if not(isPath1) then return ("fatal: invalid commit id." ++ revid1)
           else if not(isPath2) then return ("fatal: invalid commit id." ++ revid2)
             else do
-              files1 <- listDirectory path1
-              files2 <- listDirectory path2
+              files1 <- listDirectoryRecursive path1
+              files2 <- listDirectoryRecursive path2
               let dFiles = getDiff (Data.List.delete commitMetaName files1) (Data.List.delete commitMetaName files2)
               mapM_ (\snap -> case snap of 
                                        (First f) -> do
