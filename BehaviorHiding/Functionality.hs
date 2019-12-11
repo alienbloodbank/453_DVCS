@@ -45,7 +45,7 @@ performClone repoPath = do
    if isLocalPath then do
      doesRepoExist <- doesDirectoryExist $ repoPath ++ "/" ++ dvcsPath
      if doesRepoExist then do
-        copyDir repoPath "."
+        copyDir "." repoPath
         return "Cloned local repository"
      else return "Local directory is not a valid repository"
    else do
