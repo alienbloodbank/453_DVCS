@@ -21,6 +21,7 @@ import System.FilePath.Posix
 import Data.List
 import Data.List.Split
 import Data.Algorithm.Diff
+import Control.Monad
 
 import SoftwareDecision.Concept.Commit
 import SoftwareDecision.Concept.TrackedSet
@@ -63,6 +64,7 @@ performAdd file = do
    if not(doesExist) then return "fatal: not a dvcs repository .dvcs"
    else do
      inCD <- doesFileExist file
+     -- Check if its a file and not a directory before adding
      trackedFiles <- getTrackedSet
      if not(inCD) then do
        if (file `notElem` trackedFiles) then return "fatal: File does not exist in current directory"
@@ -70,8 +72,10 @@ performAdd file = do
          removeFile file
          return "File removed as its not in current directory"
      else do
-       addFile file
-       return "File added"
+       if file `elem` trackedFiles then return "File already tracked"
+       else do
+         addFile file
+         return "File added"
 
 ------------------------------------
 performRemove :: String -> IO String
@@ -92,12 +96,27 @@ performStatus = do
    if not(doesExist) then return "fatal: not a dvcs repository .dvcs"
    else do
    trackedFiles <- getTrackedSet
-   putStrLn "Tracked files:"
-   mapM_ putStrLn trackedFiles
-   putStrLn "\nUntracked files:"
+   trackedExistingFiles <- filterM (\x -> doesFileExist x) trackedFiles
+   _ <- case trackedExistingFiles of [] -> return ()
+                                     _ -> do
+                                             putStrLn "Tracked files:"
+                                             mapM_ putStrLn trackedExistingFiles
+                                             putStrLn ""
+   let deletedFiles = trackedFiles \\ trackedExistingFiles
+   _ <- case deletedFiles of [] -> return ()
+                             _ -> do
+                                      putStrLn "Tracked files that no longer exist!:"
+                                      mapM_ putStrLn deletedFiles
+                                      putStrLn ""
    allFiles <- listDirectory "."
-   mapM_ putStrLn ((Data.List.delete ".dvcs"  allFiles) \\ trackedFiles)
-   return "\nRepository status"
+   let allImpFiles = Data.List.delete ".dvcs"  allFiles
+   let untrackedFiles = allImpFiles \\ trackedFiles
+   _ <- case untrackedFiles of [] -> putStrLn "Nothing is untracked!\n"
+                               _ -> do
+                                      putStrLn "Untracked files:"
+                                      mapM_ putStrLn untrackedFiles
+                                      putStrLn ""
+   return "Repository status"
 
 ------------------------------------
 checkAltered :: CommitID -> String -> IO Bool
@@ -268,6 +287,7 @@ performLog = do
       return "Commit history"
 
 --------------------------------------
+--- TODO: Actually revert back to committed files! ---
 performCheckout :: String -> IO String
 performCheckout revid = do
   doesExist <- isRepo

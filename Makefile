@@ -20,7 +20,7 @@ install:
 	@echo "This may take some time. Please be patient ...\n"
 	cabal update
 	cabal install $(DEPENDENCIES)
-	sudo apt-get install ssh
+	sudo apt-get install ssh # might not work on MAC OSX
 
 test: $(TESTS)
 	$(CLEANUP_TEST)

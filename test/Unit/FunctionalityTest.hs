@@ -52,7 +52,7 @@ main = do
      
     -- performStatus
     msg <- performStatus 
-    let test5 = "test5" ~: "performStatus" ~: "\nRepository status" ~=? msg
+    let test5 = "test5" ~: "performStatus" ~: "Repository status" ~=? msg
 
     -- performCommit & performHeads & performLog
     msg <- performHeads
