@@ -13,7 +13,10 @@ performCat,
 performPull,
 performPush) where
 
-import System.Directory (setCurrentDirectory, doesDirectoryExist, getCurrentDirectory, doesFileExist, doesPathExist, listDirectory, copyFile, createDirectoryIfMissing)
+import System.Directory (withCurrentDirectory,
+                         removeFile,
+                         setCurrentDirectory,
+                         doesDirectoryExist, getCurrentDirectory, doesFileExist, doesPathExist, listDirectory, copyFile, createDirectoryIfMissing)
 import System.Environment
 import System.Process
 import System.IO.Unsafe
@@ -24,7 +27,7 @@ import Data.Algorithm.Diff
 import Control.Monad
 
 import SoftwareDecision.Concept.Commit
-import SoftwareDecision.Concept.TrackedSet
+import SoftwareDecision.Concept.TrackedSet as TS
 import SoftwareDecision.Concept.Repo
 import SoftwareDecision.Concept.MetaOrganization
 import SoftwareDecision.Utility.DvcsInterface
@@ -82,7 +85,7 @@ performAdd file = do
      if not(inCD) then do
        if (file `notElem` trackedFiles) then return "fatal: File does not exist in current directory"
        else do
-         removeFile file
+         TS.removeFile file
          return "File removed as its not in current directory"
      else do
        if file `elem` trackedFiles then return "File already tracked"
@@ -99,7 +102,7 @@ performRemove file = do
      trackedFiles <- getTrackedSet
      if (file `notElem` trackedFiles) then return "Error: File not being tracked. Nothing to remove"
      else do
-         removeFile file
+         TS.removeFile file
          return "File removed"
 
 ------------------------------------
@@ -108,6 +111,7 @@ performStatus = do
    doesExist <- isRepo
    if not(doesExist) then return "fatal: not a dvcs repository .dvcs"
    else do
+   -- Not using cleanTrackedSet here as its the responsibility of commit
    trackedFiles <- getTrackedSet
    trackedExistingFiles <- filterM (\x -> doesFileExist x) trackedFiles
    unless (trackedExistingFiles == []) (do
@@ -116,7 +120,7 @@ performStatus = do
                                            putStrLn "")
    let deletedFiles = trackedFiles \\ trackedExistingFiles
    unless (deletedFiles == []) (do
-                                   putStrLn "Tracked files that no longer exist!:"
+                                   putStrLn "Tracked files that no longer exist!"
                                    mapM_ putStrLn deletedFiles
                                    putStrLn "")
    commit_head <- getHEAD
@@ -284,7 +288,7 @@ performDiff revid1 revid2 = do
                                                       putStrLn $ "File not existant in first commit " ++ (takeBaseName path1) ++ "\n"
                                        (Both a b) -> do
                                                       putStrLn a
-                                                      _ <- system $ "diff " ++ (path1 ++ "/" ++ a) ++ " " ++ (path2 ++ "/" ++ b)
+                                                      callCommand $ "diff " ++ (path1 ++ "/" ++ a) ++ " " ++ (path2 ++ "/" ++ b)
                                                       putStrLn "") dFiles
               return "Diff shown"
 
@@ -309,7 +313,6 @@ performLog = do
       return "Commit history"
 
 --------------------------------------
---- TODO: Actually revert back to committed files! ---
 performCheckout :: String -> IO String
 performCheckout revid = do
   doesExist <- isRepo
@@ -319,8 +322,38 @@ performCheckout revid = do
     isPath <- doesPathExist commit_path
     if not(isPath) then return "fatal: invalid commit id."
     else do
-      setHEAD (CommitID revid)
-      return ("Head successfully changed to " ++ revid)
+      head_cid <- getHEAD
+      cleanTrackedSet
+
+      files_in_head_io <- (listDirectoryRecursive (commitPath head_cid))
+      let files_in_head = filter (/= commitMetaName) files_in_head_io
+
+      trackedFiles <- getTrackedSet
+      -- Get files in different states:
+      -- new:
+      let new_files = filter (\x -> (notElem (x) files_in_head)) trackedFiles
+
+      let files_in_TS = filter (\x -> (elem x files_in_head)) trackedFiles
+      -- altered:
+      altered_files <- filterM (\x -> checkAltered head_cid (x)) files_in_TS
+
+      if ((length new_files) /= 0) || ((length altered_files) /= 0) then return "error: Please commit your changes or revert them before you checkout"
+      else do
+        cwd <- getCurrentDirectory
+
+        mapM_ (\f -> do
+                        System.Directory.removeFile f
+                        TS.removeFile f) trackedFiles
+
+        files_in_rev <- listDirectoryRecursive commit_path >>= (\f -> return $ filter (/= commitMetaName) f)
+
+        withCurrentDirectory commit_path (do
+                                            mapM_ (\x -> do
+                                                           createDirectoryIfMissing True (cwd ++ "/" ++ (intercalate "/" $ init $ splitOn "/" x))
+                                                           copyFile (x) (cwd ++ "/" ++ x)) files_in_rev)
+        mapM_ (\x -> TS.addFile x) files_in_rev
+        setHEAD (CommitID revid)
+        return ("Head successfully changed to " ++ revid)
 
 --------------------------------------
 performCat :: String -> String -> IO String

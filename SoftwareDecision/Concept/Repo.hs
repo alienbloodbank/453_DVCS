@@ -57,7 +57,9 @@ setHEAD commitId = do
    contents <- ((decodeFileStrict repoMetaPath) :: IO (Maybe RepoMetadata))
    let (Just (RepoMetadata {pid = p, head_ = _, ts = files})) = contents
    let new = RepoMetadata {pid = p, head_ = commitId, ts = files}
-   B.writeFile repoMetaPath (encode new)
+   let tmpFilePath = "./.dvcs/repometadatatemp.json"
+   B.writeFile tmpFilePath (encode new)
+   copyFile tmpFilePath repoMetaPath
 
 getHEAD :: IO CommitID
 getHEAD = do
