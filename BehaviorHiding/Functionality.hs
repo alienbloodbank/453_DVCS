@@ -110,26 +110,32 @@ performStatus = do
    else do
    trackedFiles <- getTrackedSet
    trackedExistingFiles <- filterM (\x -> doesFileExist x) trackedFiles
-   _ <- case trackedExistingFiles of [] -> return ()
-                                     _ -> do
-                                             putStrLn "Tracked files:"
-                                             mapM_ putStrLn trackedExistingFiles
-                                             putStrLn ""
+   unless (trackedExistingFiles == []) (do
+                                           putStrLn "Tracked files"
+                                           mapM_ putStrLn trackedExistingFiles
+                                           putStrLn "")
    let deletedFiles = trackedFiles \\ trackedExistingFiles
-   _ <- case deletedFiles of [] -> return ()
-                             _ -> do
-                                      putStrLn "Tracked files that no longer exist!:"
-                                      mapM_ putStrLn deletedFiles
-                                      putStrLn ""
-   --commit_head <- getHEAD
-   --let com_path = commitPath commit_head
-       
-
+   unless (deletedFiles == []) (do
+                                   putStrLn "Tracked files that no longer exist!:"
+                                   mapM_ putStrLn deletedFiles
+                                   putStrLn "")
+   commit_head <- getHEAD
+   _ <- case commit_head of (CommitID "root") -> return ()
+                            (CommitID hid) -> do
+                                                   let com_path = commitPath (CommitID hid)
+                                                   commitedFiles <- listDirectoryRecursive com_path
+                                                   alteredFiles <- filterM (\f -> do
+                                                                              if (f `notElem` commitedFiles) then return False
+                                                                              else do (checkAltered (CommitID hid) f) >>= \x -> return x) trackedExistingFiles
+                                                   unless (alteredFiles == []) (do
+                                                                                 putStrLn "Altered files from last commit"
+                                                                                 mapM_ putStrLn alteredFiles
+                                                                                 putStrLn "")
    allFiles <- listDirectoryRecursive "."
    let untrackedFiles = allFiles \\ trackedFiles
    _ <- case untrackedFiles of [] -> putStrLn "Nothing is untracked!\n"
                                _ -> do
-                                      putStrLn "Untracked files:"
+                                      putStrLn "Untracked files"
                                       mapM_ putStrLn untrackedFiles
                                       putStrLn ""
    return "Repository status"
@@ -181,7 +187,7 @@ performCommit msg = do
 
           -- Get files (names only) of the HEAD commit
           files_in_head_io <- (listDirectoryRecursive (commitPath head_cid))
-          let files_in_head = filter (/= "commitMeta.json") files_in_head_io
+          let files_in_head = filter (/= commitMetaName) files_in_head_io
           -- mapM_ (\x->putStrLn(show(x))) files_in_head -- for DEBUG use: print out these files
 
           -- Show their contents
@@ -299,7 +305,7 @@ performLog = do
                      commit_date <- getCommitDate com
                      putStrLn $ "Commit: " ++ (getStr com) ++ "\n" ++
                                 "Message: " ++ commit_message ++ "\n" ++
-                                "Time: " ++ commit_date ++ "\n") com_list
+                                "Time: " ++ commit_date ++ "\n") (reverse com_list)
       return "Commit history"
 
 --------------------------------------
