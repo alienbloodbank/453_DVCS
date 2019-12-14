@@ -4,13 +4,11 @@ import System.Process
 
 downloadRemoteDir :: String -> IO ()
 downloadRemoteDir remotePath = do
-   _ <- readProcess "scp" ["-q", "-r", remotePath, "."] ""
-   return () 
+   callCommand $ "rsync -a -essh " ++ remotePath ++ " ."
 
 uploadRemoteDir :: String -> IO ()
 uploadRemoteDir remotePath = do
-   _ <- system $ "scp -q -r * " ++ remotePath
-   return ()
+   callCommand $ "rsync -a -essh . " ++ remotePath
 
 doesRemoteDirExist :: String -> String -> IO Bool
 doesRemoteDirExist hostname path = do
