@@ -43,5 +43,7 @@ see the `.pdf` and `.png` files in the directory Group Discussion; it includes n
         - ./dvcs diff <commit_id1> <commit_id2>
         - ./dvcs cat <commit_id> <file>
         - ./dvcs checkout <commit_id>
+        - ./dvcs pull <path>
+        - ./dvcs push <path>
         
       
