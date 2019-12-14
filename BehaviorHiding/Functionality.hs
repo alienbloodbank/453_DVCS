@@ -156,8 +156,8 @@ mergepush = do
 
            withCurrentDirectory rcommit_path (do
                                                 mapM_ (\x -> do
-                                                                createDirectoryIfMissing True (cwd ++ "/" ++ (intercalate "/" $ init $ splitOn "/" x))
-                                                                copyFile (x) (cwd ++ "/" ++ x)) files_in_rev)
+                                                                createDirectoryIfMissing True ((cwd ++ "/" ++ remoteLoc) ++ "/" ++ (intercalate "/" $ init $ splitOn "/" x))
+                                                                copyFile (x) ((cwd ++ "/" ++ remoteLoc) ++ "/" ++ x)) files_in_rev)
            withCurrentDirectory remoteLoc (mapM_ (\x -> TS.addFile x) files_in_rev)
            setRemoteHEAD new_rhead
            return "Successfully pushed"
@@ -177,7 +177,8 @@ performInit = do
 
 ------------------------------------
 performClone :: String -> IO String
-performClone repoPath = do
+performClone repo_path_impure = do
+   let repoPath = normalise $ dropTrailingPathSeparator repo_path_impure
    isLocalPath <- doesPathExist repoPath
    if isLocalPath then do
      doesRepoExist <- doesDirectoryExist $ repoPath ++ "/" ++ dvcsPath
@@ -483,7 +484,8 @@ performCat revid file = do
 ---------------------------------------
 -- TODO: 3 Way merge --
 performPull :: String -> IO String
-performPull repo_path = do
+performPull repo_path_impure = do
+  let repo_path = normalise $ dropTrailingPathSeparator repo_path_impure
   doesExist <- isRepo
   if not(doesExist) then return "fatal: not a dvcs repository .dvcs"
   else do
@@ -515,7 +517,8 @@ performPull repo_path = do
 ----------------------------------------
 --- TODO: 3 Way merge ---
 performPush :: String -> IO String
-performPush repo_path = do
+performPush repo_path_impure = do
+   let repo_path = normalise $ dropTrailingPathSeparator repo_path_impure
    doesExist <- isRepo
    if not(doesExist) then return "fatal: not a dvcs repository .dvcs"
    else do
@@ -525,7 +528,7 @@ performPush repo_path = do
      if doesRepoExist then do
         copyRepo (LocalPath repo_path)
         msg <- mergepush
-        copyDir repo_path (remoteLoc ++ "/*")
+        copyDir repo_path (remoteLoc ++ "/.")
         removeDirectoryRecursive remoteLoc
         return msg
      else return "Local directory is not a valid repository"
