@@ -5,7 +5,7 @@ TESTS = $(wildcard test/Unit/*.hs)
 DRIVER = dvcs.hs
 TARGET = dvcs
 
-DEPENDENCIES = Diff-0.4.0 aeson-1.4.6.0 random-strings-0.1.1.0 directory
+DEPENDENCIES = Diff-0.4.0 aeson-1.4.6.0 random-strings-0.1.1.0 directory monad-loops-0.4.3
 
 CLEANUP_TEST = rm -rf .dvcs ~/test_repo
 
