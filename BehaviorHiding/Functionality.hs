@@ -16,6 +16,7 @@ performPush) where
 import System.Directory (withCurrentDirectory,
                          removeFile,
                          setCurrentDirectory,
+                         removeDirectoryRecursive,
                          doesDirectoryExist, getCurrentDirectory, doesFileExist, doesPathExist, listDirectory, copyFile, createDirectoryIfMissing)
 import System.Environment
 import System.Process
@@ -25,6 +26,7 @@ import Data.List
 import Data.List.Split
 import Data.Algorithm.Diff
 import Control.Monad
+import Control.Monad.Loops
 
 import SoftwareDecision.Concept.Commit
 import SoftwareDecision.Concept.TrackedSet as TS
@@ -34,6 +36,7 @@ import SoftwareDecision.Utility.DvcsInterface
 import SoftwareDecision.Communication
 
 
+--- HELPERS ---
 listDirectoryRecursive :: FilePath -> IO [FilePath]
 listDirectoryRecursive filePath = do
    files <- listDirectory filePath
@@ -47,6 +50,122 @@ listDirectoryRecursive filePath = do
                                    return $ withPath ++ acc) [] filteredFiles
    return filesOnly
 
+checkAltered :: CommitID -> String -> IO Bool
+checkAltered head_cid file_name = do
+    head_file_c <- (getCommitFile head_cid file_name)
+    file_c <- (readFile file_name)
+    let if_altered = not (head_file_c == file_c)
+    return if_altered
+
+checkUnstashed :: IO Bool
+checkUnstashed = do
+   head_cid <- getHEAD
+   cleanTrackedSet
+
+   files_in_head_io <- (listDirectoryRecursive (commitPath head_cid))
+   let files_in_head = filter (/= commitMetaName) files_in_head_io
+
+   trackedFiles <- getTrackedSet
+   -- Get files in different states:
+   -- new:
+   let are_new_files = any (\x -> (notElem (x) files_in_head)) trackedFiles
+
+   let files_in_TS = filter (\x -> (elem x files_in_head)) trackedFiles
+   -- altered:
+   are_altered_files <- anyM (\x -> checkAltered head_cid (x)) files_in_TS
+
+   return $ are_new_files || are_altered_files
+
+mergepull :: IO String
+mergepull = do
+   c_pid <- getPID
+   r_pid <- getRemotePID
+   if r_pid /= c_pid then return "error: Invalid remote"
+   else do
+      mrca_id <- getMRCA >>= (\mrca -> case mrca of (Just id) -> do return id
+                                                    Nothing -> do return (CommitID "root"))
+      hid <- getHEAD
+      if hid == mrca_id then do
+         -- Fast Forward merge
+         remote_coms <- getUpToRemoteHeadRecursive [mrca_id] >>= (\r -> return (tail r))
+         if remote_coms == [] then return "Everything up-to-date"
+         else do
+           -- copying the remote snapshots to the local repo
+           mapM_ (\c -> copyDir objectPath (remoteCommitPath c)) remote_coms
+           -- update parents and children
+           setCommitChilds hid [(head remote_coms)]
+           setCommitParents (head remote_coms) [hid]
+
+           trackedFiles <- getTrackedSet
+
+           let new_head = last remote_coms
+           let commit_path = commitPath new_head
+           cwd <- getCurrentDirectory
+
+           -- Updating trackedset and copying files from new head to current folder
+           mapM_ (\f -> do
+                           System.Directory.removeFile f
+                           TS.removeFile f) trackedFiles
+
+           files_in_rev <- listDirectoryRecursive commit_path >>= (\f -> return $ filter (/= commitMetaName) f)
+
+           withCurrentDirectory commit_path (do
+                                                mapM_ (\x -> do
+                                                                createDirectoryIfMissing True (cwd ++ "/" ++ (intercalate "/" $ init $ splitOn "/" x))
+                                                                copyFile (x) (cwd ++ "/" ++ x)) files_in_rev)
+           mapM_ (\x -> TS.addFile x) files_in_rev
+           setHEAD new_head
+           return "Successfully pulled"
+      else do return "3-way merged"
+           -- TODO
+           -- 3-way merge
+
+mergepush :: IO String
+mergepush = do
+   c_pid <- getPID
+   r_pid <- getRemotePID
+   if r_pid /= c_pid then return "error: Invalid remote"
+   else do
+      mrca_id <- getMRCA >>= (\mrca -> case mrca of (Just id) -> do return id
+                                                    Nothing -> do return (CommitID "root"))
+      rhid <- getRemoteHEAD
+      if rhid == mrca_id then do
+         -- Fast Forward merge
+         coms <- getUpToHeadRecursive [mrca_id] >>= (\r -> return (tail r))
+         if coms == [] then return "Everything up-to-date"
+         else do
+           -- copying the local snapshots to the remote repo
+           mapM_ (\c -> copyDir (remoteLoc ++ "/" ++ objectPath) (commitPath c)) coms
+           -- update parents and children
+           setRemoteCommitChilds rhid [(head coms)]
+           setRemoteCommitParents (head coms) [rhid]
+
+           let new_rhead = last coms
+           let rcommit_path = remoteCommitPath new_rhead
+           cwd <- getCurrentDirectory
+
+           -- Updating trackedset and copying files from new head to current folder
+
+           withCurrentDirectory remoteLoc (do
+                                              trackedFiles <- getTrackedSet
+                                              mapM_ (\f -> do
+                                                             System.Directory.removeFile f
+                                                             TS.removeFile f) trackedFiles)
+
+           files_in_rev <- listDirectoryRecursive rcommit_path >>= (\f -> return $ filter (/= commitMetaName) f)
+
+           withCurrentDirectory rcommit_path (do
+                                                mapM_ (\x -> do
+                                                                createDirectoryIfMissing True (cwd ++ "/" ++ (intercalate "/" $ init $ splitOn "/" x))
+                                                                copyFile (x) (cwd ++ "/" ++ x)) files_in_rev)
+           withCurrentDirectory remoteLoc (mapM_ (\x -> TS.addFile x) files_in_rev)
+           setRemoteHEAD new_rhead
+           return "Successfully pushed"
+      else do return "3-way merged"
+           -- TODO
+           -- 3-way merge
+
+-----------------------------------
 performInit :: IO String
 performInit = do
    doesRepoAlreadyExist <- isRepo
@@ -64,15 +183,29 @@ performClone repoPath = do
      doesRepoExist <- doesDirectoryExist $ repoPath ++ "/" ++ dvcsPath
      if doesRepoExist then do
         copyDir "." repoPath
+        let repo_name = takeBaseName repoPath
+        -- Removing files not in the tracked set because clone copies everything
+        withCurrentDirectory repo_name (do
+                                          trackedSet <- getTrackedSet
+                                          allFiles <- listDirectoryRecursive "."
+                                          mapM_ (\f -> when (f `notElem` trackedSet) (System.Directory.removeFile f)) allFiles)
         return "Cloned local repository"
      else return "Local directory is not a valid repository"
    else do
-     let (hostname, remoteRepo) = break (==':') repoPath
-     doesRepoExist <- doesRemoteDirExist hostname ((tail remoteRepo) ++ "/" ++ dvcsPath)
+     let (_, _:repo) = break (==':') repoPath
+     downloadRemoteDir repoPath
+     let repo_name = takeBaseName repo
+     doesRepoExist <- doesDirectoryExist $ repo_name ++ "/" ++ dvcsPath
      if doesRepoExist then do
-        downloadRemoteDir repoPath
+        -- Removing files not in the tracked set because clone copies everything
+        withCurrentDirectory repo_name (do
+                                          trackedSet <- getTrackedSet
+                                          allFiles <- listDirectoryRecursive "."
+                                          mapM_ (\f -> when (f `notElem` trackedSet) (System.Directory.removeFile f)) allFiles)
         return "Cloned remote repository"
-     else return "Remote directory is not a valid repository"
+     else do
+        removeDirectoryRecursive repo_name
+        return "Remote directory is not a valid repository"
 
 ------------------------------------
 performAdd :: String -> IO String
@@ -145,13 +278,6 @@ performStatus = do
    return "Repository status"
 
 ------------------------------------
-checkAltered :: CommitID -> String -> IO Bool
-checkAltered head_cid file_name = do
-    head_file_c <- (getCommitFile head_cid file_name)
-    file_c <- (readFile file_name)
-    let if_altered = not (head_file_c == file_c)
-    return if_altered
-
 performCommit :: String -> IO String
 performCommit msg = do
   doesExist <- isRepo
@@ -322,25 +448,11 @@ performCheckout revid = do
     isPath <- doesPathExist commit_path
     if not(isPath) then return "fatal: invalid commit id."
     else do
-      head_cid <- getHEAD
-      cleanTrackedSet
-
-      files_in_head_io <- (listDirectoryRecursive (commitPath head_cid))
-      let files_in_head = filter (/= commitMetaName) files_in_head_io
-
-      trackedFiles <- getTrackedSet
-      -- Get files in different states:
-      -- new:
-      let new_files = filter (\x -> (notElem (x) files_in_head)) trackedFiles
-
-      let files_in_TS = filter (\x -> (elem x files_in_head)) trackedFiles
-      -- altered:
-      altered_files <- filterM (\x -> checkAltered head_cid (x)) files_in_TS
-
-      if ((length new_files) /= 0) || ((length altered_files) /= 0) then return "error: Please commit your changes or revert them before you checkout"
+      isUnStashed <- checkUnstashed
+      if isUnStashed then return "error: Please commit your changes or revert them before you checkout"
       else do
         cwd <- getCurrentDirectory
-
+        trackedFiles <- getTrackedSet
         mapM_ (\f -> do
                         System.Directory.removeFile f
                         TS.removeFile f) trackedFiles
@@ -368,10 +480,65 @@ performCat revid file = do
       cur_file <- getCommitFile (CommitID revid) file
       return cur_file
 
--- TODO --
---------------------------------------
+---------------------------------------
+-- TODO: 3 Way merge --
 performPull :: String -> IO String
-performPull repo_path = do return "Pulled"
+performPull repo_path = do
+  doesExist <- isRepo
+  if not(doesExist) then return "fatal: not a dvcs repository .dvcs"
+  else do
+  isUnStashed <- checkUnstashed
+  if isUnStashed then return "error: Please commit your changes or revert them before you pull"
+  else do
+   isLocalPath <- doesPathExist repo_path
+   if isLocalPath then do
+     doesRepoExist <- doesDirectoryExist $ repo_path ++ "/" ++ dvcsPath
+     if doesRepoExist then do
+        copyRepo (LocalPath repo_path)
+        msg <- mergepull
+        removeDirectoryRecursive remoteLoc
+        return msg
+     else return "Local directory is not a valid repository"
+   else do
+     let (_, _:repo) = break (==':') repo_path
+     withCurrentDirectory tempPath (downloadRemoteDir repo_path)
+     renameDir (tempPath ++ "/" ++ (takeBaseName repo)) remoteLoc
+     doesRepoExist <- doesDirectoryExist $ remoteLoc ++ "/" ++ dvcsPath
+     if doesRepoExist then do
+        msg <- mergepull
+        removeDirectoryRecursive remoteLoc
+        return msg
+     else do
+        removeDirectoryRecursive remoteLoc
+        return "Remote directory is not a valid repository"
 
+----------------------------------------
+--- TODO: 3 Way merge ---
 performPush :: String -> IO String
-performPush repo_path = return "Pushed"
+performPush repo_path = do
+   doesExist <- isRepo
+   if not(doesExist) then return "fatal: not a dvcs repository .dvcs"
+   else do
+   isLocalPath <- doesPathExist repo_path
+   if isLocalPath then do
+     doesRepoExist <- doesDirectoryExist $ repo_path ++ "/" ++ dvcsPath
+     if doesRepoExist then do
+        copyRepo (LocalPath repo_path)
+        msg <- mergepush
+        copyDir repo_path (remoteLoc ++ "/*")
+        removeDirectoryRecursive remoteLoc
+        return msg
+     else return "Local directory is not a valid repository"
+   else do
+     let (_, _:repo) = break (==':') repo_path
+     withCurrentDirectory tempPath (downloadRemoteDir repo_path)
+     renameDir (tempPath ++ "/" ++ (takeBaseName repo)) remoteLoc
+     doesRepoExist <- doesDirectoryExist $ remoteLoc ++ "/" ++ dvcsPath
+     if doesRepoExist then do
+        msg <- mergepush
+        withCurrentDirectory remoteLoc (uploadRemoteDir repo_path)
+        removeDirectoryRecursive remoteLoc
+        return msg
+     else do
+        removeDirectoryRecursive remoteLoc
+        return "Remote directory is not a valid repository"

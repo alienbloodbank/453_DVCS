@@ -39,7 +39,7 @@ test: $(TESTS)
 	runhaskell test/Unit/CommunicationTest.hs;$(CLEANUP_TEST)
 
 	@echo "\nRunning tests for BehaviorHiding.Functionality Module ...\n"
-	@echo "NOTE: You have to enter credentials 2 times for the dvcs clone tests\n"
+	@echo "NOTE: You have to enter credential for the dvcs clone tests\n"
 	runhaskell test/Unit/FunctionalityTest.hs;$(CLEANUP_TEST)
 
 	@echo "\nRunning tests for BehaviorHiding.UserInteraction Module ...\n"

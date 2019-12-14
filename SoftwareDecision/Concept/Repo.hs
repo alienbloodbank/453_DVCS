@@ -2,7 +2,8 @@
 module SoftwareDecision.Concept.Repo(RepoMetadata(..), createRepo, isRepo,
   getRemoteLeaf, getLocalLeaf, getHEAD, getRemoteHEAD, getPID, getRemotePID,
   RepoPath(..), getMRCA, copyRepo, getRemoteTrackedSet, getRemoteCommitChilds,
-  getRemoteCommitParents, setHEAD, getUpToHead) where
+  getRemoteCommitParents, setHEAD, getUpToHead, getUpToRemoteHeadRecursive, remoteCommitPath,
+  getUpToHeadRecursive, setRemoteCommitChilds, setRemoteCommitParents, setRemoteHEAD) where
 
 import GHC.Generics
 import Data.Aeson
@@ -94,6 +95,9 @@ copyRepo (LocalPath p) = do
    copyDir tempPath p
    renameDir (tempPath ++ "/" ++ (takeBaseName p)) remoteLoc
 
+remoteCommitPath :: CommitID -> String
+remoteCommitPath cid = remoteLoc ++ "/" ++ (commitPath cid)
+
 remoteCommitMetaPath :: CommitID -> String
 remoteCommitMetaPath cid = remoteLoc ++ "/" ++ (commitMetaPath cid)
 
@@ -127,7 +131,9 @@ setRemoteHEAD cid = do
    contents <- ((decodeFileStrict $ remoteRepoMetaPath ) :: IO (Maybe RepoMetadata))
    let (Just (RepoMetadata {pid = p, head_ = _, ts = files})) = contents
    let new = RepoMetadata {pid = p, head_ = cid, ts = files}
-   B.writeFile remoteRepoMetaPath (encode new)
+   let tmpFilePath = remoteLoc ++ "/.dvcs/repometadatatemp.json"
+   B.writeFile tmpFilePath (encode new)
+   copyFile tmpFilePath remoteRepoMetaPath
 
 setRemoteCommitChilds :: CommitID -> [CommitID] -> IO ()
 setRemoteCommitChilds cid cids = setCommitChildsWithPath (remoteCommitMetaPath cid) cids
