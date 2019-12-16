@@ -27,7 +27,7 @@ main = do
     setHEAD cid2
     copyDir remote_path ".dvcs"
 
-    setCommitChilds cid1 ([]::[CommitID])
+    -- setCommitChilds cid1 ([]::[CommitID])
     addCommitChilds cid1 [cid3]
     cid4 <- createCommitDir "branch 2 second"
     addCommitChilds cid3 [cid4]
@@ -35,6 +35,21 @@ main = do
 
     -- begin testing
 
+    -- test getUpToHead
+    cid5 <- createCommitDir "branch3"
+    cid6 <- createCommitDir "merge 1"
+    cid7 <- createCommitDir "merge 2"
+    setCommitChilds cid1 [cid2, cid3, cid5]
+    setCommitChilds cid5 [cid6]
+    setCommitChilds cid2 [cid6]
+    setCommitChilds cid6 [cid7]
+    setCommitChilds cid4 [cid7]
+    setHEAD cid7
+    upToHead <- getUpToHead
+    let test0_1 = TestCase (assertEqual "wrong upToHead" [CommitID "root", cid1, cid2, cid3, cid4, cid5, cid6, cid7] upToHead)
+
+    setCommitChilds cid1 ([cid3])
+    setHEAD cid2
     -- test getRemoteLeaf
     remote_leaf <- getRemoteLeaf
     let test1_1 = TestCase (assertEqual "wrong remote leaf" cid2 remote_leaf)
@@ -65,9 +80,10 @@ main = do
     remote_head <- getRemoteHEAD
     let test7_1 = TestCase (assertEqual "wrong remote head" cid2 remote_head)
 
-    let tests = TestList[TestLabel "test1_1" test1_1, TestLabel "test2_1" test2_1, 
-                         TestLabel "test3_1" test3_1, TestLabel "test4_1" test4_1,
-                         TestLabel "test5_1" test5_1, TestLabel "test6_1" test6_1,
-                         TestLabel "test7_1" test7_1]
+    let tests = TestList[TestLabel "test0_1" test0_1, TestLabel "test1_1" test1_1, 
+                         TestLabel "test2_1" test2_1, TestLabel "test3_1" test3_1, 
+                         TestLabel "test4_1" test4_1, TestLabel "test5_1" test5_1, 
+                         TestLabel "test6_1" test6_1, TestLabel "test7_1" test7_1]
     runTestTT tests
-
+    system "rm -r ~/test_repo"
+    system "rm -r .dvcs"

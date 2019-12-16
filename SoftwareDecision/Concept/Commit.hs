@@ -97,11 +97,11 @@ getCommitMessage cid = do
     let (Just (CommitMeta {commitId = cid2, message = m, date = d, childs = c, parents = p})) = contents
     return m
 
-getCommitDate :: CommitID -> IO String
+getCommitDate :: CommitID -> IO UTCTime
 getCommitDate cid = do
     contents <- (decodeFileStrict (commitMetaPath cid)) :: IO (Maybe CommitMeta)
     let (Just (CommitMeta {commitId = cid, message = m, date = d, childs = c, parents = p})) = contents
-    return (show d)
+    return d
 
 getCommitChildsWithPath :: FilePath -> IO [CommitID]
 getCommitChildsWithPath fp = do

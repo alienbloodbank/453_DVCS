@@ -9,6 +9,9 @@ import GHC.Generics
 import Data.Aeson
 import Data.Time
 import Data.List
+import qualified Data.Set as S
+import Control.Monad.ListM
+import Control.Monad
 import System.Exit
 import System.Directory (createDirectory, copyFile, doesDirectoryExist)
 import Test.RandomStrings (randomString, onlyAlphaNum, randomASCII)
@@ -18,6 +21,8 @@ import SoftwareDecision.Concept.MetaOrganization
 import SoftwareDecision.Concept.Commit
 import SoftwareDecision.Communication
 import System.FilePath.Posix
+
+debug = False
 
 data RepoMetadata = RepoMetadata {
       pid :: String
@@ -170,24 +175,35 @@ getRemoteNext x = do
 -- should have the same commitID
 
 getUpToHead :: IO [CommitID]
-getUpToHead = getUpToHeadRecursive [CommitID "root"]
+getUpToHead = do 
+  listOfIds <- getUpToHeadRecursive [CommitID "root"]
+  sorted <- sortByM (\x y -> compare <$> (getCommitDate x) <*> (getCommitDate y)) listOfIds
+  return sorted
 
 getUpToHeadRecursive :: [CommitID] -> IO [CommitID]
 getUpToHeadRecursive lst = do
+   when debug (putStr $ show lst ++ "\n")
    let cid = last lst
    childs <- getCommitChilds cid
    if childs == []
     then return lst
    else do
-    lh <- getHEAD
-    if foldl (&&) True ((/= lh) <$> childs)
-     then do
-      result <- getUpToHeadRecursive $ lst ++ (sort childs)
-      return result
-     else return $ lst ++ [lh]
+    if length childs == 1
+      then do 
+        if elem (childs !! 0) lst 
+          then return lst
+          else do
+            result <- getUpToHeadRecursive $ lst ++ childs
+            return result
+      else do -- more than one child
+        result <- foldM (\acc x -> getUpToHeadRecursive $ acc ++ [x]) lst childs
+        return result
 
 getUpToRemoteHead :: IO [CommitID]
-getUpToRemoteHead = getUpToRemoteHeadRecursive [CommitID "root"]
+getUpToRemoteHead = do 
+  listOfIds <- getUpToRemoteHeadRecursive [CommitID "root"]
+  sorted <- sortByM (\x y -> compare <$> (getRemoteCommitDate x) <*> (getRemoteCommitDate y)) listOfIds
+  return sorted
 
 getUpToRemoteHeadRecursive :: [CommitID] -> IO [CommitID]
 getUpToRemoteHeadRecursive lst = do
@@ -196,12 +212,16 @@ getUpToRemoteHeadRecursive lst = do
    if childs == []
     then return lst
    else do
-    rh <- getRemoteHEAD
-    if foldl (&&) True ((/= rh) <$> childs)
-     then do
-      result <- getUpToRemoteHeadRecursive $ lst ++ (sort childs)
-      return result
-     else return $ lst ++ [rh]
+    if length childs == 1
+      then do 
+        if elem (childs !! 0) lst 
+          then return lst
+          else do
+            result <- getUpToRemoteHeadRecursive $ lst ++ childs
+            return result
+      else do -- more than one child
+        result <- foldM (\acc x -> getUpToRemoteHeadRecursive $ acc ++ [x]) lst childs
+        return result
 
 getMRCA :: IO (Maybe CommitID)
 getMRCA = do

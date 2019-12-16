@@ -386,7 +386,7 @@ performHeads = do
       message <- getCommitMessage commit_head
       putStrLn $ "Message: " ++ message
       time <- getCommitDate commit_head
-      putStrLn $ "Time: " ++ time ++ "\n"
+      putStrLn $ "Time: " ++ (show time) ++ "\n"
       return "Heads shown"
 
 ------------------------------------
@@ -436,7 +436,7 @@ performLog = do
                      commit_date <- getCommitDate com
                      putStrLn $ "Commit: " ++ (getStr com) ++ "\n" ++
                                 "Message: " ++ commit_message ++ "\n" ++
-                                "Time: " ++ commit_date ++ "\n") (reverse com_list)
+                                "Time: " ++ (show commit_date) ++ "\n") (reverse com_list)
       return "Commit history"
 
 --------------------------------------
