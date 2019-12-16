@@ -22,7 +22,8 @@ getCommitParents,
 getCommitFile,
 setCommitChilds,
 addCommitChilds,
-setCommitParents
+setCommitParents,
+addCommitParents
 ) where
 
 import System.Directory
@@ -145,6 +146,11 @@ addCommitChilds :: CommitID -> [CommitID] -> IO ()
 addCommitChilds cid cids = do
     old <- getCommitChilds cid
     setCommitChilds cid $ old ++ cids
+
+addCommitParents :: CommitID -> [CommitID] -> IO ()
+addCommitParents cid cids = do
+    old <- getCommitParents cid
+    setCommitParents cid $ old ++ cids
 
 setCommitParents :: CommitID -> [CommitID] -> IO()
 setCommitParents cid cids = setCommitParentsWithPath (commitMetaPath cid) cids
