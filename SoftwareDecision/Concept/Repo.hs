@@ -3,7 +3,8 @@ module SoftwareDecision.Concept.Repo(RepoMetadata(..), createRepo, isRepo,
   getRemoteLeaf, getLocalLeaf, getHEAD, getRemoteHEAD, getPID, getRemotePID,
   RepoPath(..), getMRCA, copyRepo, getRemoteTrackedSet, getRemoteCommitChilds,
   getRemoteCommitParents, setHEAD, getUpToHead, getUpToRemoteHeadRecursive, remoteCommitPath,
-  getUpToHeadRecursive, setRemoteCommitChilds, setRemoteCommitParents, setRemoteHEAD) where
+  getUpToHeadRecursive, setRemoteCommitChilds, setRemoteCommitParents, setRemoteHEAD,
+  addRemoteCommitChilds, addRemoteCommitParents) where
 
 import GHC.Generics
 import Data.Aeson
@@ -138,8 +139,18 @@ setRemoteHEAD cid = do
 setRemoteCommitChilds :: CommitID -> [CommitID] -> IO ()
 setRemoteCommitChilds cid cids = setCommitChildsWithPath (remoteCommitMetaPath cid) cids
 
+addRemoteCommitChilds :: CommitID -> [CommitID] -> IO ()
+addRemoteCommitChilds cid cids = do
+    old <- getRemoteCommitChilds cid
+    setRemoteCommitChilds cid $ old ++ cids
+
 setRemoteCommitParents :: CommitID -> [CommitID] -> IO ()
 setRemoteCommitParents cid cids = setCommitParentsWithPath (remoteCommitMetaPath cid) cids
+
+addRemoteCommitParents :: CommitID -> [CommitID] -> IO ()
+addRemoteCommitParents cid cids = do
+    old <- getRemoteCommitParents cid
+    setRemoteCommitParents cid $ old ++ cids
 
 getRemoteCommitDate :: CommitID -> IO UTCTime
 getRemoteCommitDate cid = do

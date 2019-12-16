@@ -26,7 +26,7 @@ import Data.List
 import Data.List.Split
 import Data.Algorithm.Diff
 import Control.Monad
-import Control.Monad.Loops
+import Control.Monad.ListM
 
 import SoftwareDecision.Concept.Commit
 import SoftwareDecision.Concept.TrackedSet as TS
@@ -82,19 +82,20 @@ mergepull = do
    r_pid <- getRemotePID
    if r_pid /= c_pid then return "error: Invalid remote"
    else do
-      mrca_id <- getMRCA >>= (\mrca -> case mrca of (Just id) -> do return id
-                                                    Nothing -> do return (CommitID "root"))
+      mrca_id <- getMRCA >>= (\mrca -> case mrca of (Just id) -> return id
+                                                    Nothing -> return (CommitID "root"))
       hid <- getHEAD
+      remote_coms <- getUpToRemoteHeadRecursive [mrca_id] >>= (\r -> return (tail r))
       if hid == mrca_id then do
          -- Fast Forward merge
-         remote_coms <- getUpToRemoteHeadRecursive [mrca_id] >>= (\r -> return (tail r))
          if remote_coms == [] then return "Everything up-to-date"
          else do
            -- copying the remote snapshots to the local repo
            mapM_ (\c -> copyDir objectPath (remoteCommitPath c)) remote_coms
            -- update parents and children
-           setCommitChilds hid [(head remote_coms)]
-           setCommitParents (head remote_coms) [hid]
+           mrca_new_childs <- getRemoteCommitChilds mrca_id
+
+           mapM_ (\c -> addCommitChilds hid [c]) mrca_new_childs
 
            trackedFiles <- getTrackedSet
 
@@ -109,16 +110,89 @@ mergepull = do
 
            files_in_rev <- listDirectoryRecursive commit_path >>= (\f -> return $ filter (/= commitMetaName) f)
 
-           withCurrentDirectory commit_path (do
+           withCurrentDirectory commit_path $ do
                                                 mapM_ (\x -> do
                                                                 createDirectoryIfMissing True (cwd ++ "/" ++ (intercalate "/" $ init $ splitOn "/" x))
-                                                                copyFile (x) (cwd ++ "/" ++ x)) files_in_rev)
+                                                                copyFile (x) (cwd ++ "/" ++ x)) files_in_rev
            mapM_ (\x -> TS.addFile x) files_in_rev
            setHEAD new_head
            return "Successfully pulled"
-      else do return "3-way merged"
-           -- TODO
-           -- 3-way merge
+      else do
+         -- 3-way merge
+         if remote_coms == [] then return "error: Local is ahead of remote"
+         else do
+           -- copying the remote snapshots to the local repo
+           mapM_ (\c -> copyDir objectPath (remoteCommitPath c)) remote_coms
+
+           -- add a link between mrca and first commit in remote chain
+           mrca_new_childs <- getRemoteCommitChilds mrca_id
+           mapM_ (\c -> addCommitChilds mrca_id [c]) mrca_new_childs
+
+           -- add a merge commit and update its links
+           rhid <- getRemoteHEAD -- should be equal to (last remote_coms)
+
+           merge_commit_id <- createCommitDir $ "Merge Committed " ++ (getStr hid) ++ "/" ++ (getStr hid)
+           let merge_commit_path = commitPath merge_commit_id
+
+           addCommitParents merge_commit_id [hid, rhid]
+           addCommitChilds hid [merge_commit_id]
+           addCommitChilds rhid [merge_commit_id]
+
+           -- remove files in the tracked set
+           trackedFiles <- getTrackedSet
+           mapM_ (\f -> do
+                           System.Directory.removeFile f
+                           TS.removeFile f) trackedFiles
+
+           let path1 = commitPath hid
+           let path2 = commitPath rhid
+
+           -- list of files in the 2 'heads'
+           files1 <- listDirectoryRecursive path1 >>= (\fs -> return $ Data.List.delete commitMetaName fs)
+           files2 <- listDirectoryRecursive path2 >>= (\fs -> return $ Data.List.delete commitMetaName fs)
+           let dFiles = getDiff files1 files2
+
+           cwd <- getCurrentDirectory
+
+           merge_conflicts <- foldM (\acc df -> case df of (First f) -> do
+                                                                           withCurrentDirectory path1 $ do
+                                                                                  createDirectoryIfMissing True (cwd ++ "/" ++ (intercalate "/" $ init $ splitOn "/" f))
+                                                                                  copyFile f (cwd ++ "/" ++ f)
+                                                                           TS.addFile f
+                                                                           return acc
+                                                           (Second f) -> do
+                                                                           withCurrentDirectory path2 $ do
+                                                                                  createDirectoryIfMissing True (cwd ++ "/" ++ (intercalate "/" $ init $ splitOn "/" f))
+                                                                                  copyFile f (cwd ++ "/" ++ f)
+                                                                           TS.addFile f
+                                                                           return acc
+                                                           (Both a b) -> do -- Optional TODO: git based smart merge
+                                                                           contents1 <- getCommitFile hid a
+                                                                           contents2 <- getCommitFile hid b
+                                                                           if contents1 == contents2 then do
+                                                                             withCurrentDirectory path1 $ do
+                                                                                  createDirectoryIfMissing True (cwd ++ "/" ++ (intercalate "/" $ init $ splitOn "/" a))
+                                                                                  copyFile a (cwd ++ "/" ++ a)
+                                                                             TS.addFile a
+                                                                             return acc
+                                                                           else do
+                                                                             withCurrentDirectory path1 $ do
+                                                                                  createDirectoryIfMissing True (cwd ++ "/" ++ (intercalate "/" $ init $ splitOn "/" a))
+                                                                                  copyFile a (cwd ++ "/" ++ a ++ "_CURRENT")
+                                                                             withCurrentDirectory path2 $ do
+                                                                                     createDirectoryIfMissing True (cwd ++ "/" ++ (intercalate "/" $ init $ splitOn "/" b))
+                                                                                     copyFile b (cwd ++ "/" ++ b ++ "_OTHER")
+                                                                             return $ acc ++ [a ++ "_CURRENT", b ++ "_OTHER"]) [] dFiles
+           setHEAD merge_commit_id
+           if merge_conflicts == [] then return "Successfully pulled"
+           else do
+              putStrLn "MERGE CONFLICT!"
+              putStrLn "Resolve these files, add them and then commit manually"
+              mapM_ putStrLn merge_conflicts
+              -- creating a locked directory to indicate merge conflict
+              createDirectoryIfMissing False ".LOCKED"
+              return "Pull Incomplete"
+
 
 mergepush :: IO String
 mergepush = do
@@ -137,8 +211,11 @@ mergepush = do
            -- copying the local snapshots to the remote repo
            mapM_ (\c -> copyDir (remoteLoc ++ "/" ++ objectPath) (commitPath c)) coms
            -- update parents and children
-           setRemoteCommitChilds rhid [(head coms)]
-           setRemoteCommitParents (head coms) [rhid]
+           mrca_new_childs <- getCommitChilds mrca_id
+
+           mapM_ (\c -> addRemoteCommitChilds rhid [c]) mrca_new_childs
+
+           trackedFiles <- getRemoteTrackedSet
 
            let new_rhead = last coms
            let rcommit_path = remoteCommitPath new_rhead
@@ -146,11 +223,9 @@ mergepush = do
 
            -- Updating trackedset and copying files from new head to current folder
 
-           withCurrentDirectory remoteLoc (do
-                                              trackedFiles <- getTrackedSet
-                                              mapM_ (\f -> do
-                                                             System.Directory.removeFile f
-                                                             TS.removeFile f) trackedFiles)
+           withCurrentDirectory remoteLoc (mapM_ (\f -> do
+                                                           System.Directory.removeFile f
+                                                           TS.removeFile f) trackedFiles)
 
            files_in_rev <- listDirectoryRecursive rcommit_path >>= (\f -> return $ filter (/= commitMetaName) f)
 
@@ -161,9 +236,7 @@ mergepush = do
            withCurrentDirectory remoteLoc (mapM_ (\x -> TS.addFile x) files_in_rev)
            setRemoteHEAD new_rhead
            return "Successfully pushed"
-      else do return "3-way merged"
-           -- TODO
-           -- 3-way merge
+      else do return "fatal: remote has changed. Please pull first"
 
 -----------------------------------
 performInit :: IO String
@@ -171,7 +244,7 @@ performInit = do
    doesRepoAlreadyExist <- isRepo
    cd <- getCurrentDirectory
    if doesRepoAlreadyExist then return $ "Reinitialized existing dvcs repository in " ++ cd
-   else do 
+   else do
       createRepo
       return $ "Initialized repository in " ++ cd
 
@@ -231,7 +304,9 @@ performAdd file = do
 performRemove :: String -> IO String
 performRemove file = do
    doesExist <- isRepo
+   isLocked <- doesDirectoryExist ".LOCKED"
    if not(doesExist) then return "fatal: not a dvcs repository .dvcs"
+   else if isLocked then return "fatal: Please resolve conflicts and then commit them"
    else do
      trackedFiles <- getTrackedSet
      if (file `notElem` trackedFiles) then return "Error: File not being tracked. Nothing to remove"
@@ -243,7 +318,9 @@ performRemove file = do
 performStatus :: IO String
 performStatus = do
    doesExist <- isRepo
+   isLocked <- doesDirectoryExist ".LOCKED"
    if not(doesExist) then return "fatal: not a dvcs repository .dvcs"
+   else if isLocked then return "fatal: Please resolve conflicts and then commit them"
    else do
    -- Not using cleanTrackedSet here as its the responsibility of commit
    trackedFiles <- getTrackedSet
@@ -258,31 +335,40 @@ performStatus = do
                                    mapM_ putStrLn deletedFiles
                                    putStrLn "")
    commit_head <- getHEAD
-   _ <- case commit_head of (CommitID "root") -> return ()
-                            (CommitID hid) -> do
-                                                   let com_path = commitPath (CommitID hid)
-                                                   commitedFiles <- listDirectoryRecursive com_path
-                                                   alteredFiles <- filterM (\f -> do
+   unless (commit_head == (CommitID "root")) (do
+                                                 let com_path = commitPath commit_head
+                                                 commitedFiles <- listDirectoryRecursive com_path
+                                                 alteredFiles <- filterM (\f -> do
                                                                               if (f `notElem` commitedFiles) then return False
-                                                                              else do (checkAltered (CommitID hid) f) >>= \x -> return x) trackedExistingFiles
-                                                   unless (alteredFiles == []) (do
+                                                                              else do (checkAltered commit_head f) >>= \x -> return x) trackedExistingFiles
+                                                 unless (alteredFiles == []) (do
                                                                                  putStrLn "Altered files from last commit"
                                                                                  mapM_ putStrLn alteredFiles
-                                                                                 putStrLn "")
+                                                                                 putStrLn ""))
    allFiles <- listDirectoryRecursive "."
    let untrackedFiles = allFiles \\ trackedFiles
-   _ <- case untrackedFiles of [] -> putStrLn "Nothing is untracked!\n"
-                               _ -> do
-                                      putStrLn "Untracked files"
-                                      mapM_ putStrLn untrackedFiles
-                                      putStrLn ""
+   case untrackedFiles of [] -> putStrLn "Nothing is untracked!\n"
+                          _ -> do
+                                  putStrLn "Untracked files"
+                                  mapM_ putStrLn untrackedFiles
+                                  putStrLn ""
    return "Repository status"
 
 ------------------------------------
 performCommit :: String -> IO String
 performCommit msg = do
   doesExist <- isRepo
+  isLocked <- doesDirectoryExist ".LOCKED"
   if not(doesExist) then return "fatal: not a dvcs repository .dvcs"
+  else if isLocked then do
+    removeDirectoryRecursive ".LOCKED"
+    cleanTrackedSet -- remove files from TS if not in CD
+    trackedFiles <- getTrackedSet
+    hid <- getHEAD
+    let commit_path = commitPath hid
+    mapM_ (\x -> createDirectoryIfMissing True (commit_path ++ "/" ++ (intercalate "/" (init (splitOn "/" x))))) trackedFiles
+    mapM_ (\x -> copyFile (x) (commit_path ++ "/" ++ x)) trackedFiles
+    return "Committed"
   else do
   cleanTrackedSet -- remove files from TS if not in CD
   trackedFiles <- getTrackedSet
@@ -307,7 +393,7 @@ performCommit msg = do
           mapM_ (\x -> copyFile (x) (commit_path ++ "/" ++ x)) trackedFiles
           -- Set HEAD
 
-          setCommitChilds head_cid [commit_id]
+          addCommitChilds head_cid [commit_id]
           setCommitParents commit_id [head_cid]
 
           setHEAD commit_id
@@ -366,7 +452,7 @@ performCommit msg = do
               -- mapM_ (\x -> createFileLink (x) (commit_path ++ "/" ++ x)) unaltered_files
 
               -- update parents and children
-              setCommitChilds head_cid [commit_id]
+              addCommitChilds head_cid [commit_id]
               setCommitParents commit_id [head_cid]
 
               -- update HEAD
@@ -377,7 +463,9 @@ performCommit msg = do
 performHeads :: IO String
 performHeads = do
   doesExist <- isRepo
+  isLocked <- doesDirectoryExist ".LOCKED"
   if not(doesExist) then return "fatal: not a dvcs repository .dvcs"
+  else if isLocked then return "fatal: Please resolve conflicts and then commit them"
   else do
     commit_head <- getHEAD
     if commit_head == (CommitID "root") then return "fatal: no commits in current repository."
@@ -393,7 +481,9 @@ performHeads = do
 performDiff :: String -> String -> IO String
 performDiff revid1 revid2 = do
   doesExist <- isRepo
+  isLocked <- doesDirectoryExist ".LOCKED"
   if not(doesExist) then return "fatal: not a dvcs repository .dvcs"
+  else if isLocked then return "fatal: Please resolve conflicts and then commit them"
     else if revid1 == revid2 then return "fatal: ID's are identical"
       else do
         let path1 = commitPath (CommitID revid1)
@@ -403,10 +493,10 @@ performDiff revid1 revid2 = do
         if not(isPath1) then return ("fatal: invalid commit id." ++ revid1)
           else if not(isPath2) then return ("fatal: invalid commit id." ++ revid2)
             else do
-              files1 <- listDirectoryRecursive path1
-              files2 <- listDirectoryRecursive path2
-              let dFiles = getDiff (Data.List.delete commitMetaName files1) (Data.List.delete commitMetaName files2)
-              mapM_ (\snap -> case snap of 
+              files1 <- listDirectoryRecursive path1 >>= (\fs -> return $ Data.List.delete commitMetaName fs)
+              files2 <- listDirectoryRecursive path2 >>= (\fs -> return $ Data.List.delete commitMetaName fs)
+              let dFiles = getDiff files1 files2
+              mapM_ (\snap -> case snap of
                                        (First f) -> do
                                                       putStrLn f
                                                       putStrLn $ "File not existant in second commit " ++ (takeBaseName path2) ++ "\n"
@@ -423,13 +513,15 @@ performDiff revid1 revid2 = do
 performLog :: IO String
 performLog = do
   doesExist <- isRepo
+  isLocked <- doesDirectoryExist ".LOCKED"
   if not(doesExist) then return "fatal: not a dvcs repository .dvcs"
+  else if isLocked then return "fatal: Please resolve conflicts and then commit them"
   else do
     commit_head <- getHEAD
     if commit_head == (CommitID "root") then return "fatal: no commits in current repository."
     else do
       commit_list <- getUpToHead
-      let com_list = tail commit_list 
+      let com_list = tail commit_list
       putStrLn "(HEAD)"
       mapM_ (\com -> do
                      commit_message <- getCommitMessage com
@@ -443,7 +535,9 @@ performLog = do
 performCheckout :: String -> IO String
 performCheckout revid = do
   doesExist <- isRepo
+  isLocked <- doesDirectoryExist ".LOCKED"
   if not(doesExist) then return "fatal: not a dvcs repository .dvcs"
+  else if isLocked then return "fatal: Please resolve conflicts and then commit them"
   else do
     let commit_path = commitPath (CommitID revid)
     isPath <- doesPathExist commit_path
@@ -472,7 +566,9 @@ performCheckout revid = do
 performCat :: String -> String -> IO String
 performCat revid file = do
   doesExist <- isRepo
+  isLocked <- doesDirectoryExist ".LOCKED"
   if not(doesExist) then return "fatal: not a dvcs repository .dvcs"
+  else if isLocked then return "fatal: Please resolve conflicts and then commit them"
   else do
     let commit_path = commitPath (CommitID revid)
     isPath <- doesPathExist commit_path
@@ -487,7 +583,9 @@ performPull :: String -> IO String
 performPull repo_path_impure = do
   let repo_path = normalise $ dropTrailingPathSeparator repo_path_impure
   doesExist <- isRepo
+  isLocked <- doesDirectoryExist ".LOCKED"
   if not(doesExist) then return "fatal: not a dvcs repository .dvcs"
+  else if isLocked then return "fatal: Please resolve conflicts and then commit them"
   else do
   isUnStashed <- checkUnstashed
   if isUnStashed then return "error: Please commit your changes or revert them before you pull"
@@ -515,12 +613,13 @@ performPull repo_path_impure = do
         return "Remote directory is not a valid repository"
 
 ----------------------------------------
---- TODO: 3 Way merge ---
 performPush :: String -> IO String
 performPush repo_path_impure = do
    let repo_path = normalise $ dropTrailingPathSeparator repo_path_impure
    doesExist <- isRepo
+   isLocked <- doesDirectoryExist ".LOCKED"
    if not(doesExist) then return "fatal: not a dvcs repository .dvcs"
+   else if isLocked then return "fatal: Please resolve conflicts and then commit them"
    else do
    isLocalPath <- doesPathExist repo_path
    if isLocalPath then do
