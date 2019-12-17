@@ -1,7 +1,21 @@
 module BehaviorHiding.UserInteraction(parse) where
 
 -- User Interaction module uses Functionality module
-import BehaviorHiding.Functionality
+import BehaviorHiding.Functionality.Add
+import BehaviorHiding.Functionality.Cat
+import BehaviorHiding.Functionality.Checkout
+import BehaviorHiding.Functionality.Clone
+import BehaviorHiding.Functionality.Commit
+import BehaviorHiding.Functionality.Diff
+import BehaviorHiding.Functionality.Heads
+import BehaviorHiding.Functionality.Init
+import BehaviorHiding.Functionality.Log
+import BehaviorHiding.Functionality.Merge
+import BehaviorHiding.Functionality.Pull
+import BehaviorHiding.Functionality.Push
+import BehaviorHiding.Functionality.Remove
+import BehaviorHiding.Functionality.Status
+
 import Control.Monad
 
 validCommands :: [String]
