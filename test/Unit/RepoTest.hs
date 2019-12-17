@@ -15,13 +15,13 @@ main = do
     homeDir <- getHomeDirectory
     cid1 <- createCommitDir "mrca"
     addCommitChilds (CommitID "root") [cid1]
-    setCommitParents cid1 [CommitID "root"] 
+    setCommitParents cid1 [CommitID "root"]
     cid2 <- createCommitDir "branch 1"
     cid3 <- createCommitDir "branch 2"
     addCommitChilds cid1 [cid2]
     let remote_path = "~/test_repo"
     remoteExist <- doesDirectoryExist remote_path
-    if remoteExist 
+    if remoteExist
         then print "the remote test repo already exists"
         else createDirectory $ homeDir ++ "/test_repo"
     setHEAD cid2
@@ -60,7 +60,7 @@ main = do
     let test2_1 = TestCase (assertEqual "wrong remote Project ID" local_pid remote_pid)
 
     -- test getRemoteCommitChilds
-    remote_childs <- getRemoteCommitChilds (CommitID "root") 
+    remote_childs <- getRemoteCommitChilds (CommitID "root")
     let test3_1 = TestCase (assertEqual "wrong remote childs" [cid1] remote_childs)
 
     -- test getRemoteCommitParents
@@ -69,8 +69,8 @@ main = do
 
     -- test getMRCA
     maybe_mrca <- getMRCA
-    let (Just mrca) = maybe_mrca
-    let test5_1 = TestCase (assertEqual "wrong mrca" cid1 mrca) 
+    let mrca = maybe_mrca
+    let test5_1 = TestCase (assertEqual "wrong mrca" cid1 mrca)
 
     -- test getRemoteTrackedSet
     remote_ts <- getRemoteTrackedSet
@@ -80,9 +80,9 @@ main = do
     remote_head <- getRemoteHEAD
     let test7_1 = TestCase (assertEqual "wrong remote head" cid2 remote_head)
 
-    let tests = TestList[TestLabel "test0_1" test0_1, TestLabel "test1_1" test1_1, 
-                         TestLabel "test2_1" test2_1, TestLabel "test3_1" test3_1, 
-                         TestLabel "test4_1" test4_1, TestLabel "test5_1" test5_1, 
+    let tests = TestList[TestLabel "test0_1" test0_1, TestLabel "test1_1" test1_1,
+                         TestLabel "test2_1" test2_1, TestLabel "test3_1" test3_1,
+                         TestLabel "test4_1" test4_1, TestLabel "test5_1" test5_1,
                          TestLabel "test6_1" test6_1, TestLabel "test7_1" test7_1]
     runTestTT tests
     system "rm -r ~/test_repo"

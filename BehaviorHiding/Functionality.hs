@@ -161,7 +161,7 @@ mergepull = do
                                                                   createDirectoryIfMissing True (cwd ++ "/" ++ (intercalate "/" $ init $ splitOn "/" f))
                                                                   copyFile f (cwd ++ "/" ++ f)
                                                            withCurrentDirectory merge_path $ do
-                                                                  createDirectoryIfMissing True (cwd ++ "/" ++ (intercalate "/" $ init $ splitOn "/" f))
+                                                                  createDirectoryIfMissing True (intercalate "/" $ init $ splitOn "/" f)
                                                                   copyFile (cwd ++ "/" ++ f) f
                                                            TS.addFile f
 
@@ -169,20 +169,33 @@ mergepull = do
                                                                            return acc
                                                            (Second f) -> do addFileToMergeCommit path2 merge_commit_path f
                                                                             return acc
-                                                           (Both a b) -> do -- Optional TODO: git based smart merge
+                                                           (Both a b) -> do
                                                                            contents1 <- getCommitFile hid a
                                                                            contents2 <- getCommitFile rhid b
+                                                                           doesExistinMrca <- doesFileExist $ (commitPath mrca_id) ++ "/" ++ a
+                                                                           contentsm <- case doesExistinMrca of True -> getCommitFile mrca_id a
+                                                                                                                False -> return ""
                                                                            if contents1 == contents2 then do
                                                                              addFileToMergeCommit path1 merge_commit_path a
                                                                              return acc
                                                                            else do
-                                                                             withCurrentDirectory path1 $ do
-                                                                                  createDirectoryIfMissing True (cwd ++ "/" ++ (intercalate "/" $ init $ splitOn "/" a))
-                                                                                  copyFile a (cwd ++ "/" ++ a ++ "_CURRENT")
-                                                                             withCurrentDirectory path2 $ do
-                                                                                  createDirectoryIfMissing True (cwd ++ "/" ++ (intercalate "/" $ init $ splitOn "/" b))
-                                                                                  copyFile b (cwd ++ "/" ++ b ++ "_OTHER")
-                                                                             return $ acc ++ [a ++ "_CURRENT", b ++ "_OTHER"]) [] dFiles
+                                                                             let results = smartMerge contentsm contents1 contents2
+                                                                             clash <- case results of (Just new_contents) -> do
+                                                                                                      -- git based smart merge (Experimental)
+                                                                                                       addFileToMergeCommit path1 merge_commit_path a
+                                                                                                       writeFile a new_contents
+                                                                                                       return []
+                                                                                                      Nothing -> do
+                                                                                                       withCurrentDirectory path1 $ do
+                                                                                                         createDirectoryIfMissing True (cwd ++ "/" ++
+                                                                                                          (intercalate "/" $ init $ splitOn "/" a))
+                                                                                                         copyFile a (cwd ++ "/" ++ a ++ "_CURRENT")
+                                                                                                       withCurrentDirectory path2 $ do
+                                                                                                         createDirectoryIfMissing True (cwd ++ "/" ++
+                                                                                                          (intercalate "/" $ init $ splitOn "/" b))
+                                                                                                         copyFile b (cwd ++ "/" ++ b ++ "_OTHER")
+                                                                                                       return $ [a ++ "_CURRENT", b ++ "_OTHER"]
+                                                                             return $ acc ++ clash) [] dFiles
            setHEAD merge_commit_id
            if merge_conflicts == [] then return "Successfully pulled"
            else do
