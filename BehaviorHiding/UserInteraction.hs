@@ -21,7 +21,9 @@ postProcess "help" _ = do
           "- ./dvcs log\n" ++
           "- ./dvcs diff <commit_id1> <commit_id2>\n" ++
           "- ./dvcs cat <commit_id> <file>\n" ++
-          "- ./dvcs checkout <commit_id>\n"
+          "- ./dvcs checkout <commit_id>\n" ++
+          "- ./dvcs pull <path>\n" ++
+          "- ./dvcs push <path>\n"
 postProcess "init" args = performInit >>= \msg -> return msg
 postProcess "clone" args = do
    if args == [] then return "fatal: You must specify a repository to clone."

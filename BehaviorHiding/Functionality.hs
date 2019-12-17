@@ -70,7 +70,7 @@ smartMerge mrca file1 file2 =
                     else if line1 == linem then line2
                     else if line2 == linem then line1
                     else conflicted_line | i <- [1 .. max_size],
-                    let (line1, line2, linem) = (file1_lines !! (i - 1), file1_lines !! (i - 1), mrca_lines !! (i - 1))] in
+                    let (line1, line2, linem) = (file1_lines !! (i - 1), file2_lines !! (i - 1), mrca_lines !! (i - 1))] in
    if (conflicted_line `elem` new_file) then Nothing else Just (unlines new_file)
    where mrca_lines = pad mrca
          file1_lines = pad file1
@@ -133,7 +133,7 @@ mergepull = do
            -- add a merge commit and update its links
            rhid <- getRemoteHEAD -- should be equal to (last remote_coms)
 
-           merge_commit_id <- createCommitDir $ "Merge Committed " ++ (getStr hid) ++ "/" ++ (getStr hid)
+           merge_commit_id <- createCommitDir $ "Merge Committed " ++ (getStr hid) ++ "/" ++ (getStr rhid)
            let merge_commit_path = commitPath merge_commit_id
 
            addCommitParents merge_commit_id [hid, rhid]
@@ -184,6 +184,7 @@ mergepull = do
                                                                                                       -- git based smart merge (Experimental)
                                                                                                        addFileToMergeCommit path1 merge_commit_path a
                                                                                                        writeFile a new_contents
+                                                                                                       writeFile (merge_commit_path ++ "/" ++ a) new_contents
                                                                                                        return []
                                                                                                       Nothing -> do
                                                                                                        withCurrentDirectory path1 $ do
@@ -331,9 +332,7 @@ performRemove file = do
 performStatus :: IO String
 performStatus = do
    doesExist <- isRepo
-   isLocked <- doesDirectoryExist ".LOCKED"
    if not(doesExist) then return "fatal: not a dvcs repository .dvcs"
-   else if isLocked then return "fatal: Please resolve conflicts and then commit them"
    else do
    -- Not using cleanTrackedSet here as its the responsibility of commit
    trackedFiles <- getTrackedSet
@@ -381,7 +380,7 @@ performCommit msg = do
     let commit_path = commitPath hid
     mapM_ (\x -> createDirectoryIfMissing True (commit_path ++ "/" ++ (intercalate "/" (init (splitOn "/" x))))) trackedFiles
     mapM_ (\x -> copyFile (x) (commit_path ++ "/" ++ x)) trackedFiles
-    return "Committed"
+    return "Finished merge commit"
   else do
   cleanTrackedSet -- remove files from TS if not in CD
   trackedFiles <- getTrackedSet
