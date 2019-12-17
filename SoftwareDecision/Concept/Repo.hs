@@ -186,7 +186,7 @@ getRemoteNext x = do
 -- should have the same commitID
 
 getUpToHead :: IO [CommitID]
-getUpToHead = do 
+getUpToHead = do
   listOfIds <- getUpToHeadRecursive [CommitID "root"]
   sorted <- sortByM (\x y -> compare <$> (getCommitDate x) <*> (getCommitDate y)) listOfIds
   return sorted
@@ -200,8 +200,8 @@ getUpToHeadRecursive lst = do
     then return lst
    else do
     if length childs == 1
-      then do 
-        if elem (childs !! 0) lst 
+      then do
+        if elem (childs !! 0) lst
           then return lst
           else do
             result <- getUpToHeadRecursive $ lst ++ childs
@@ -211,7 +211,7 @@ getUpToHeadRecursive lst = do
         return result
 
 getUpToRemoteHead :: IO [CommitID]
-getUpToRemoteHead = do 
+getUpToRemoteHead = do
   listOfIds <- getUpToRemoteHeadRecursive [CommitID "root"]
   sorted <- sortByM (\x y -> compare <$> (getRemoteCommitDate x) <*> (getRemoteCommitDate y)) listOfIds
   return sorted
@@ -224,8 +224,8 @@ getUpToRemoteHeadRecursive lst = do
     then return lst
    else do
     if length childs == 1
-      then do 
-        if elem (childs !! 0) lst 
+      then do
+        if elem (childs !! 0) lst
           then return lst
           else do
             result <- getUpToRemoteHeadRecursive $ lst ++ childs
@@ -234,11 +234,9 @@ getUpToRemoteHeadRecursive lst = do
         result <- foldM (\acc x -> getUpToRemoteHeadRecursive $ acc ++ [x]) lst childs
         return result
 
-getMRCA :: IO (Maybe CommitID)
+getMRCA :: IO CommitID
 getMRCA = do
    localHistory <- getUpToHead
    remoteHistory <- getUpToRemoteHead
    let mrca = last $ intersect localHistory remoteHistory
-   if mrca == (CommitID "root")
-    then return Nothing
-    else return $Just mrca
+   return mrca

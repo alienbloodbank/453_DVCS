@@ -37,19 +37,6 @@ import SoftwareDecision.Communication
 
 
 --- HELPERS ---
-listDirectoryRecursive :: FilePath -> IO [FilePath]
-listDirectoryRecursive filePath = do
-   files <- listDirectory filePath
-   let filteredFiles = filter (\f -> not . or $ [f == ".git", f == ".dvcs"]) files
-   filesOnly <- foldM (\acc x -> do
-                               isFile <- doesFileExist $ filePath ++ "/" ++ x
-                               if isFile then return (x:acc)
-                               else do
-                                   files_ <- listDirectoryRecursive $ filePath ++ "/" ++ x
-                                   let withPath = map (\f -> x ++ "/" ++ f) files_
-                                   return $ withPath ++ acc) [] filteredFiles
-   return filesOnly
-
 checkAltered :: CommitID -> String -> IO Bool
 checkAltered head_cid file_name = do
     head_file_c <- (getCommitFile head_cid file_name)
@@ -76,14 +63,29 @@ checkUnstashed = do
 
    return $ are_new_files || are_altered_files
 
+-- https://www.drdobbs.com/tools/three-way-merging-a-look-under-the-hood/240164902 --
+smartMerge :: String -> String -> String -> Maybe String
+smartMerge mrca file1 file2 =
+   let new_file = [ if line1 == line2 then line1
+                    else if line1 == linem then line2
+                    else if line2 == linem then line1
+                    else conflicted_line | i <- [1 .. max_size],
+                    let (line1, line2, linem) = (file1_lines !! (i - 1), file1_lines !! (i - 1), mrca_lines !! (i - 1))] in
+   if (conflicted_line `elem` new_file) then Nothing else Just (unlines new_file)
+   where mrca_lines = pad mrca
+         file1_lines = pad file1
+         file2_lines = pad file2
+         max_size = maximum $ map (length . lines) [mrca, file1, file2]
+         pad file = (lines file) ++ (replicate (max_size - (length file)) "")
+         conflicted_line = ">>>>>>>>> MERGE CONFLICT!!"
+
 mergepull :: IO String
 mergepull = do
    c_pid <- getPID
    r_pid <- getRemotePID
    if r_pid /= c_pid then return "error: Invalid remote"
    else do
-      mrca_id <- getMRCA >>= (\mrca -> case mrca of (Just id) -> return id
-                                                    Nothing -> return (CommitID "root"))
+      mrca_id <- getMRCA
       hid <- getHEAD
       remote_coms <- getUpToRemoteHeadRecursive [mrca_id] >>= (\r -> return (tail r))
       if hid == mrca_id then do
@@ -154,34 +156,32 @@ mergepull = do
 
            cwd <- getCurrentDirectory
 
-           merge_conflicts <- foldM (\acc df -> case df of (First f) -> do
-                                                                           withCurrentDirectory path1 $ do
-                                                                                  createDirectoryIfMissing True (cwd ++ "/" ++ (intercalate "/" $ init $ splitOn "/" f))
-                                                                                  copyFile f (cwd ++ "/" ++ f)
-                                                                           TS.addFile f
+           let addFileToMergeCommit path merge_path f = do
+                                                           withCurrentDirectory path $ do
+                                                                  createDirectoryIfMissing True (cwd ++ "/" ++ (intercalate "/" $ init $ splitOn "/" f))
+                                                                  copyFile f (cwd ++ "/" ++ f)
+                                                           withCurrentDirectory merge_path $ do
+                                                                  createDirectoryIfMissing True (cwd ++ "/" ++ (intercalate "/" $ init $ splitOn "/" f))
+                                                                  copyFile (cwd ++ "/" ++ f) f
+                                                           TS.addFile f
+
+           merge_conflicts <- foldM (\acc df -> case df of (First f) -> do addFileToMergeCommit path1 merge_commit_path f
                                                                            return acc
-                                                           (Second f) -> do
-                                                                           withCurrentDirectory path2 $ do
-                                                                                  createDirectoryIfMissing True (cwd ++ "/" ++ (intercalate "/" $ init $ splitOn "/" f))
-                                                                                  copyFile f (cwd ++ "/" ++ f)
-                                                                           TS.addFile f
-                                                                           return acc
+                                                           (Second f) -> do addFileToMergeCommit path2 merge_commit_path f
+                                                                            return acc
                                                            (Both a b) -> do -- Optional TODO: git based smart merge
                                                                            contents1 <- getCommitFile hid a
-                                                                           contents2 <- getCommitFile hid b
+                                                                           contents2 <- getCommitFile rhid b
                                                                            if contents1 == contents2 then do
-                                                                             withCurrentDirectory path1 $ do
-                                                                                  createDirectoryIfMissing True (cwd ++ "/" ++ (intercalate "/" $ init $ splitOn "/" a))
-                                                                                  copyFile a (cwd ++ "/" ++ a)
-                                                                             TS.addFile a
+                                                                             addFileToMergeCommit path1 merge_commit_path a
                                                                              return acc
                                                                            else do
                                                                              withCurrentDirectory path1 $ do
                                                                                   createDirectoryIfMissing True (cwd ++ "/" ++ (intercalate "/" $ init $ splitOn "/" a))
                                                                                   copyFile a (cwd ++ "/" ++ a ++ "_CURRENT")
                                                                              withCurrentDirectory path2 $ do
-                                                                                     createDirectoryIfMissing True (cwd ++ "/" ++ (intercalate "/" $ init $ splitOn "/" b))
-                                                                                     copyFile b (cwd ++ "/" ++ b ++ "_OTHER")
+                                                                                  createDirectoryIfMissing True (cwd ++ "/" ++ (intercalate "/" $ init $ splitOn "/" b))
+                                                                                  copyFile b (cwd ++ "/" ++ b ++ "_OTHER")
                                                                              return $ acc ++ [a ++ "_CURRENT", b ++ "_OTHER"]) [] dFiles
            setHEAD merge_commit_id
            if merge_conflicts == [] then return "Successfully pulled"
@@ -200,8 +200,7 @@ mergepush = do
    r_pid <- getRemotePID
    if r_pid /= c_pid then return "error: Invalid remote"
    else do
-      mrca_id <- getMRCA >>= (\mrca -> case mrca of (Just id) -> do return id
-                                                    Nothing -> do return (CommitID "root"))
+      mrca_id <- getMRCA
       rhid <- getRemoteHEAD
       if rhid == mrca_id then do
          -- Fast Forward merge
@@ -223,21 +222,22 @@ mergepush = do
 
            -- Updating trackedset and copying files from new head to current folder
 
-           withCurrentDirectory remoteLoc (mapM_ (\f -> do
+           withCurrentDirectory remoteLoc $ mapM_ (\f -> do
                                                            System.Directory.removeFile f
-                                                           TS.removeFile f) trackedFiles)
+                                                           TS.removeFile f) trackedFiles
 
            files_in_rev <- listDirectoryRecursive rcommit_path >>= (\f -> return $ filter (/= commitMetaName) f)
 
-           withCurrentDirectory rcommit_path (do
+           withCurrentDirectory rcommit_path $ do
                                                 mapM_ (\x -> do
                                                                 createDirectoryIfMissing True ((cwd ++ "/" ++ remoteLoc) ++ "/" ++ (intercalate "/" $ init $ splitOn "/" x))
-                                                                copyFile (x) ((cwd ++ "/" ++ remoteLoc) ++ "/" ++ x)) files_in_rev)
+                                                                copyFile (x) ((cwd ++ "/" ++ remoteLoc) ++ "/" ++ x)) files_in_rev
            withCurrentDirectory remoteLoc (mapM_ (\x -> TS.addFile x) files_in_rev)
            setRemoteHEAD new_rhead
            return "Successfully pushed"
       else do return "fatal: remote has changed. Please pull first"
 
+--------- ACTUAL COMMANDS ---------
 -----------------------------------
 performInit :: IO String
 performInit = do
@@ -259,10 +259,10 @@ performClone repo_path_impure = do
         copyDir "." repoPath
         let repo_name = takeBaseName repoPath
         -- Removing files not in the tracked set because clone copies everything
-        withCurrentDirectory repo_name (do
+        withCurrentDirectory repo_name $ do
                                           trackedSet <- getTrackedSet
                                           allFiles <- listDirectoryRecursive "."
-                                          mapM_ (\f -> when (f `notElem` trackedSet) (System.Directory.removeFile f)) allFiles)
+                                          mapM_ (\f -> when (f `notElem` trackedSet) (System.Directory.removeFile f)) allFiles
         return "Cloned local repository"
      else return "Local directory is not a valid repository"
    else do
@@ -272,10 +272,10 @@ performClone repo_path_impure = do
      doesRepoExist <- doesDirectoryExist $ repo_name ++ "/" ++ dvcsPath
      if doesRepoExist then do
         -- Removing files not in the tracked set because clone copies everything
-        withCurrentDirectory repo_name (do
+        withCurrentDirectory repo_name $ do
                                           trackedSet <- getTrackedSet
                                           allFiles <- listDirectoryRecursive "."
-                                          mapM_ (\f -> when (f `notElem` trackedSet) (System.Directory.removeFile f)) allFiles)
+                                          mapM_ (\f -> when (f `notElem` trackedSet) (System.Directory.removeFile f)) allFiles
         return "Cloned remote repository"
      else do
         removeDirectoryRecursive repo_name
@@ -325,17 +325,17 @@ performStatus = do
    -- Not using cleanTrackedSet here as its the responsibility of commit
    trackedFiles <- getTrackedSet
    trackedExistingFiles <- filterM (\x -> doesFileExist x) trackedFiles
-   unless (trackedExistingFiles == []) (do
+   unless (trackedExistingFiles == []) $ do
                                            putStrLn "Tracked files"
                                            mapM_ putStrLn trackedExistingFiles
-                                           putStrLn "")
+                                           putStrLn ""
    let deletedFiles = trackedFiles \\ trackedExistingFiles
    unless (deletedFiles == []) (do
                                    putStrLn "Tracked files that no longer exist!"
                                    mapM_ putStrLn deletedFiles
                                    putStrLn "")
    commit_head <- getHEAD
-   unless (commit_head == (CommitID "root")) (do
+   unless (commit_head == (CommitID "root")) $ do
                                                  let com_path = commitPath commit_head
                                                  commitedFiles <- listDirectoryRecursive com_path
                                                  alteredFiles <- filterM (\f -> do
@@ -344,7 +344,7 @@ performStatus = do
                                                  unless (alteredFiles == []) (do
                                                                                  putStrLn "Altered files from last commit"
                                                                                  mapM_ putStrLn alteredFiles
-                                                                                 putStrLn ""))
+                                                                                 putStrLn "")
    allFiles <- listDirectoryRecursive "."
    let untrackedFiles = allFiles \\ trackedFiles
    case untrackedFiles of [] -> putStrLn "Nothing is untracked!\n"
@@ -554,10 +554,10 @@ performCheckout revid = do
 
         files_in_rev <- listDirectoryRecursive commit_path >>= (\f -> return $ filter (/= commitMetaName) f)
 
-        withCurrentDirectory commit_path (do
+        withCurrentDirectory commit_path $ do
                                             mapM_ (\x -> do
                                                            createDirectoryIfMissing True (cwd ++ "/" ++ (intercalate "/" $ init $ splitOn "/" x))
-                                                           copyFile (x) (cwd ++ "/" ++ x)) files_in_rev)
+                                                           copyFile (x) (cwd ++ "/" ++ x)) files_in_rev
         mapM_ (\x -> TS.addFile x) files_in_rev
         setHEAD (CommitID revid)
         return ("Head successfully changed to " ++ revid)
@@ -578,7 +578,6 @@ performCat revid file = do
       return cur_file
 
 ---------------------------------------
--- TODO: 3 Way merge --
 performPull :: String -> IO String
 performPull repo_path_impure = do
   let repo_path = normalise $ dropTrailingPathSeparator repo_path_impure
