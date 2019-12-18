@@ -18,7 +18,7 @@ performStatus = do
    else do
    -- Not using cleanTrackedSet here as its the responsibility of commit
    trackedFiles <- getTrackedSet
-   trackedExistingFiles <- filterM (\x -> doesFileExist x) trackedFiles
+   trackedExistingFiles <- filterM doesFileExist trackedFiles
    unless (trackedExistingFiles == []) $ do
                                            putStrLn "Tracked files"
                                            mapM_ putStrLn trackedExistingFiles
@@ -34,7 +34,7 @@ performStatus = do
                                                  commitedFiles <- listDirectoryRecursive com_path
                                                  alteredFiles <- filterM (\f -> do
                                                                               if (f `notElem` commitedFiles) then return False
-                                                                              else do (checkAltered commit_head f) >>= \x -> return x) trackedExistingFiles
+                                                                              else do (checkAltered commit_head f) >>= return) trackedExistingFiles
                                                  unless (alteredFiles == []) (do
                                                                                  putStrLn "Altered files from last commit"
                                                                                  mapM_ putStrLn alteredFiles

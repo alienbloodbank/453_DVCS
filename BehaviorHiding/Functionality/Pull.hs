@@ -44,6 +44,4 @@ performPull repo_path_impure = do
         msg <- mergePull
         removeDirectoryRecursive remoteLoc
         return msg
-     else do
-        removeDirectoryRecursive remoteLoc
-        return "Remote directory is not a valid repository"
+     else removeDirectoryRecursive remoteLoc >> return "Remote directory is not a valid repository"

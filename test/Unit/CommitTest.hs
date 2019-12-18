@@ -1,9 +1,9 @@
 import Test.HUnit
-import BehaviorHiding.Functionality (performInit)
-import SoftwareDecision.Concept.Commit (CommitID, getCommitChilds, getCommitID, createCommitDir, 
+import BehaviorHiding.Functionality.Init
+import SoftwareDecision.Concept.Commit (CommitID, getCommitChilds, getCommitID, createCommitDir,
     getCommitParents, setCommitChilds, addCommitChilds, getCommitMessage)
 
-main = do 
+main = do
     performInit
     -- test createCommitDir, getCommitChilds, getCommitParents
     let message1 = "test createCommitDir"

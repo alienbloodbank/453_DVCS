@@ -28,8 +28,8 @@ performDiff revid1 revid2 = do
         if not(isPath1) then return ("fatal: invalid commit id." ++ revid1)
           else if not(isPath2) then return ("fatal: invalid commit id." ++ revid2)
             else do
-              files1 <- listDirectoryRecursive path1 >>= (\fs -> return $ Data.List.delete commitMetaName fs)
-              files2 <- listDirectoryRecursive path2 >>= (\fs -> return $ Data.List.delete commitMetaName fs)
+              files1 <- listDirectoryRecursive path1 >>= return . filter (/= commitMetaName)
+              files2 <- listDirectoryRecursive path2 >>= return . filter (/= commitMetaName)
               let dFiles = getDiff files1 files2
               mapM_ (\snap -> case snap of
                                        (First f) -> do

@@ -2,7 +2,7 @@ import Test.HUnit
 import System.Directory (createDirectory, doesDirectoryExist, removeDirectoryRecursive, getHomeDirectory)
 import System.Process
 
-import BehaviorHiding.Functionality
+import BehaviorHiding.Functionality.Init
 import SoftwareDecision.Concept.TrackedSet
 import SoftwareDecision.Utility.DvcsInterface (copyDir)
 import SoftwareDecision.Concept.Commit

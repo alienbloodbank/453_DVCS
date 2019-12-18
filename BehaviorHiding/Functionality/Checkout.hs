@@ -37,12 +37,12 @@ performCheckout revid = do
                         System.Directory.removeFile f
                         TS.removeFile f) trackedFiles
 
-        files_in_rev <- listDirectoryRecursive commit_path >>= (\f -> return $ filter (/= commitMetaName) f)
+        files_in_rev <- listDirectoryRecursive commit_path >>= return . filter (/= commitMetaName)
 
         withCurrentDirectory commit_path $ do
                                             mapM_ (\x -> do
-                                                           createDirectoryIfMissing True (cwd ++ "/" ++ (intercalate "/" $ init $ splitOn "/" x))
-                                                           copyFile (x) (cwd ++ "/" ++ x)) files_in_rev
+                                                          createDirectoryIfMissing True (cwd ++ "/" ++ (intercalate "/" $ init $ splitOn "/" x))
+                                                          copyFile (x) (cwd ++ "/" ++ x)) files_in_rev
         mapM_ (\x -> TS.addFile x) files_in_rev
         setHEAD (CommitID revid)
         return ("Head successfully changed to " ++ revid)

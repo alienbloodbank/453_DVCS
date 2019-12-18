@@ -46,6 +46,4 @@ performClone repo_path_impure = do
                                           allFiles <- listDirectoryRecursive "."
                                           mapM_ (\f -> when (f `notElem` trackedSet) (System.Directory.removeFile f)) allFiles
         return "Cloned remote repository"
-     else do
-        removeDirectoryRecursive repo_name
-        return "Remote directory is not a valid repository"
+     else removeDirectoryRecursive repo_name >> return "Remote directory is not a valid repository"

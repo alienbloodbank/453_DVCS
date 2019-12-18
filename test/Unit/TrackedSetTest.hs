@@ -1,6 +1,6 @@
 import Test.HUnit
 import System.Process
-import BehaviorHiding.Functionality
+import BehaviorHiding.Functionality.Init
 import SoftwareDecision.Concept.TrackedSet as TS
 import SoftwareDecision.Utility.DvcsInterface
 import SoftwareDecision.Concept.Commit
@@ -17,7 +17,7 @@ main = do
     -- getTrackedSet
     trackedSet <- TS.getTrackedSet
     let test1 = "test1" ~: "getTrackedSet" ~: [] ~=? trackedSet
-    
+
     -- addFile
     TS.addFile "bar.txt"
     TS.addFile "foo.txt"
@@ -28,7 +28,7 @@ main = do
     -- removeFile
     TS.removeFile "foo.txt"
     trackedSet <- TS.getTrackedSet
-    let test3 = "test3" ~: "removeFile" ~: Set.fromList ["bar.txt", "lol.txt"] ~=? Set.fromList trackedSet 
+    let test3 = "test3" ~: "removeFile" ~: Set.fromList ["bar.txt", "lol.txt"] ~=? Set.fromList trackedSet
 
     -- cleanTrackedSet
     _ <- system "touch lol.txt"

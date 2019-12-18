@@ -27,8 +27,8 @@ smartMerge mrca file1 file2 =
    let new_file = [ if line1 == line2 then line1
                     else if line1 == linem then line2
                     else if line2 == linem then line1
-                    else (conflicted_line ++ linem) | i <- [1 .. max_size],
-                    let (line1, line2, linem) = (file1_lines !! (i - 1), file2_lines !! (i - 1), mrca_lines !! (i - 1))] in
+                    else (conflicted_line ++ linem) | i <- [0 .. max_size - 1],
+                    let (line1, line2, linem) = (file1_lines !! i, file2_lines !! i, mrca_lines !! i)] in
    if (conflicted_line `elem` new_file) then Nothing else Just (unlines new_file)
    where mrca_lines = pad mrca
          file1_lines = pad file1
@@ -45,7 +45,7 @@ mergePull = do
    else do
       mrca_id <- getMRCA
       hid <- getHEAD
-      remote_coms <- getUpToRemoteHeadRecursive [mrca_id] >>= (\r -> return (tail r))
+      remote_coms <- getUpToRemoteHeadRecursive [mrca_id] >>= return . tail
       if hid == mrca_id then do
          -- Fast Forward merge
          if remote_coms == [] then return "Everything up-to-date"
@@ -68,13 +68,13 @@ mergePull = do
                            System.Directory.removeFile f
                            TS.removeFile f) trackedFiles
 
-           files_in_rev <- listDirectoryRecursive commit_path >>= (\f -> return $ filter (/= commitMetaName) f)
+           files_in_rev <- listDirectoryRecursive commit_path >>= return . filter (/= commitMetaName)
 
            withCurrentDirectory commit_path $ do
                                                 mapM_ (\x -> do
                                                                 createDirectoryIfMissing True (cwd ++ "/" ++ (intercalate "/" $ init $ splitOn "/" x))
                                                                 copyFile (x) (cwd ++ "/" ++ x)) files_in_rev
-           mapM_ (\x -> TS.addFile x) files_in_rev
+           mapM_ TS.addFile files_in_rev
            setHEAD new_head
            return "Successfully pulled"
       else do
@@ -108,8 +108,8 @@ mergePull = do
            let path2 = commitPath rhid
 
            -- list of files in the 2 'heads'
-           files1 <- listDirectoryRecursive path1 >>= (\fs -> return $ Data.List.delete commitMetaName fs)
-           files2 <- listDirectoryRecursive path2 >>= (\fs -> return $ Data.List.delete commitMetaName fs)
+           files1 <- listDirectoryRecursive path1 >>= return . filter (/= commitMetaName)
+           files2 <- listDirectoryRecursive path2 >>= return . filter (/= commitMetaName)
            let dFiles = getDiff files1 files2
 
            cwd <- getCurrentDirectory
@@ -131,8 +131,7 @@ mergePull = do
                                                                            contents1 <- getCommitFile hid a
                                                                            contents2 <- getCommitFile rhid b
                                                                            doesExistinMrca <- doesFileExist $ (commitPath mrca_id) ++ "/" ++ a
-                                                                           contentsm <- case doesExistinMrca of True -> getCommitFile mrca_id a
-                                                                                                                False -> return ""
+                                                                           contentsm <- if doesExistinMrca then (getCommitFile mrca_id a) else return ""
                                                                            if contents1 == contents2 then do
                                                                              addFileToMergeCommit path1 merge_commit_path a
                                                                              return acc
@@ -176,7 +175,7 @@ mergePush = do
       rhid <- getRemoteHEAD
       if rhid == mrca_id then do
          -- Fast Forward merge
-         coms <- getUpToHeadRecursive [mrca_id] >>= (\r -> return (tail r))
+         coms <- getUpToHeadRecursive [mrca_id] >>= return . tail
          if coms == [] then return "Everything up-to-date"
          else do
            -- copying the local snapshots to the remote repo
@@ -198,13 +197,13 @@ mergePush = do
                                                            System.Directory.removeFile f
                                                            TS.removeFile f) trackedFiles
 
-           files_in_rev <- listDirectoryRecursive rcommit_path >>= (\f -> return $ filter (/= commitMetaName) f)
+           files_in_rev <- listDirectoryRecursive rcommit_path >>= return . filter (/= commitMetaName)
 
            withCurrentDirectory rcommit_path $ do
                                                 mapM_ (\x -> do
                                                                 createDirectoryIfMissing True ((cwd ++ "/" ++ remoteLoc) ++ "/" ++ (intercalate "/" $ init $ splitOn "/" x))
                                                                 copyFile (x) ((cwd ++ "/" ++ remoteLoc) ++ "/" ++ x)) files_in_rev
-           withCurrentDirectory remoteLoc (mapM_ (\x -> TS.addFile x) files_in_rev)
+           withCurrentDirectory remoteLoc (mapM_ TS.addFile files_in_rev)
            setRemoteHEAD new_rhead
            return "Successfully pushed"
       else do return "fatal: remote has changed. Please pull first"

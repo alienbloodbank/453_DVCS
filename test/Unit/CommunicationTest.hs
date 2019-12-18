@@ -2,7 +2,7 @@ import Test.HUnit
 import System.Process
 import System.Posix.User
 import System.Directory (doesDirectoryExist, setCurrentDirectory, doesFileExist, getHomeDirectory, createDirectory)
-import BehaviorHiding.Functionality
+import BehaviorHiding.Functionality.Init
 import SoftwareDecision.Utility.DvcsInterface (copyDir)
 import SoftwareDecision.Communication
 import SoftwareDecision.Concept.Commit
@@ -20,14 +20,14 @@ main = do
         then print "the remote test repo already exists"
         else createDirectory $ homeDir ++ "/test_repo"
     copyDir remote_path ".dvcs"
-    
+
     username <- getLoginName
 
     -- begin testing
 
     -- downloadRemoteDir
     downloadRemoteDir $ username ++ "@127.0.0.1:~/test_repo/.dvcs"
-    doesExist <- doesDirectoryExist ".dvcs" 
+    doesExist <- doesDirectoryExist ".dvcs"
     let test1 = "test1" ~: "downloadRemoteDir" ~: True ~=? doesExist
 
     -- uploadRemoteDir
@@ -37,11 +37,10 @@ main = do
     setCurrentDirectory ".."
     doesExist <- doesFileExist $ homeDir ++ "/test_repo/.dvcs/foo.json"
     let test2 = "test2" ~: "uploadRemoteDir" ~: True ~=? doesExist
-    
+
     -- doesRemoteDirExist
     doesExist <- doesRemoteDirExist (username ++ "@127.0.0.1") "~/test_repo/.dvcs"
     let test3 = "test3" ~: "doesRemoteDirExist" ~: True ~=? doesExist
- 
+
     let tests = test [test1, test2, test3]
     runTestTT tests
-

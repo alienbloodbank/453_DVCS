@@ -1,5 +1,17 @@
 import Test.HUnit
-import BehaviorHiding.Functionality
+import BehaviorHiding.Functionality.Add
+import BehaviorHiding.Functionality.Cat
+import BehaviorHiding.Functionality.Checkout
+import BehaviorHiding.Functionality.Clone
+import BehaviorHiding.Functionality.Commit
+import BehaviorHiding.Functionality.Diff
+import BehaviorHiding.Functionality.Heads
+import BehaviorHiding.Functionality.Init
+import BehaviorHiding.Functionality.Log
+import BehaviorHiding.Functionality.Pull
+import BehaviorHiding.Functionality.Push
+import BehaviorHiding.Functionality.Remove
+import BehaviorHiding.Functionality.Status
 import BehaviorHiding.UserInteraction
 
 main = do
@@ -7,9 +19,9 @@ main = do
 
     -- parse
     msg <- parse []
-    let test1_1 = "test1_1" ~: "parse" ~: "usage: dvcs <command> [<args>]. See 'dvcs help'" ~=? msg    
+    let test1_1 = "test1_1" ~: "parse" ~: "usage: dvcs <command> [<args>]. See 'dvcs help'" ~=? msg
     msg <- parse ["foo"]
-    let test1_2 = "test1_2" ~: "parse" ~: "dvcs: foo is not a dvcs command. See 'dvcs help’" ~=? msg        
+    let test1_2 = "test1_2" ~: "parse" ~: "dvcs: foo is not a dvcs command. See 'dvcs help’" ~=? msg
 
     -- postProcess
     msg <- parse ["help"]
@@ -24,7 +36,9 @@ main = do
           "- ./dvcs log\n" ++
           "- ./dvcs diff <commit_id1> <commit_id2>\n" ++
           "- ./dvcs cat <commit_id> <file>\n" ++
-          "- ./dvcs checkout <commit_id>\n") ~=? msg
+          "- ./dvcs checkout <commit_id>\n" ++
+          "- ./dvcs pull <path>\n" ++
+          "- ./dvcs push <path>\n") ~=? msg
     msg <- parse ["clone"]
     let test2_2 = "test2_2" ~: "postProcess: clone" ~: "fatal: You must specify a repository to clone." ~=? msg
     msg <- parse ["add"]
@@ -46,4 +60,3 @@ main = do
 
     let tests = test [test1_1, test1_2, test2_1, test2_2, test2_3, test2_4, test2_5, test2_6, test2_7, test2_8, test2_9, test2_10]
     runTestTT tests
-

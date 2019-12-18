@@ -14,11 +14,7 @@ performAdd file = do
      trackedFiles <- getTrackedSet
      if not(inCD) then do
        if (file `notElem` trackedFiles) then return "fatal: File does not exist in current directory"
-       else do
-         TS.removeFile file
-         return "File removed as its not in current directory"
+       else TS.removeFile file >> return "File removed as its not in current directory"
      else do
        if file `elem` trackedFiles then return "File already tracked"
-       else do
-         addFile file
-         return "File added"
+       else addFile file >> return "File added"

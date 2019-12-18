@@ -3,7 +3,4 @@ import BehaviorHiding.UserInteraction
 
 import System.Environment (getArgs)
 
-main = do
-   args <- getArgs
-   msg <- parse args  
-   putStrLn msg
+main = getArgs >>= parse >>= putStrLn

@@ -14,6 +14,4 @@ performRemove file = do
    else do
      trackedFiles <- getTrackedSet
      if (file `notElem` trackedFiles) then return "Error: File not being tracked. Nothing to remove"
-     else do
-         TS.removeFile file
-         return "File removed"
+     else TS.removeFile file >> return "File removed"

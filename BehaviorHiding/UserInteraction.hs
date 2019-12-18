@@ -10,7 +10,6 @@ import BehaviorHiding.Functionality.Diff
 import BehaviorHiding.Functionality.Heads
 import BehaviorHiding.Functionality.Init
 import BehaviorHiding.Functionality.Log
-import BehaviorHiding.Functionality.Merge
 import BehaviorHiding.Functionality.Pull
 import BehaviorHiding.Functionality.Push
 import BehaviorHiding.Functionality.Remove
@@ -38,42 +37,42 @@ postProcess "help" _ = do
           "- ./dvcs checkout <commit_id>\n" ++
           "- ./dvcs pull <path>\n" ++
           "- ./dvcs push <path>\n"
-postProcess "init" args = performInit >>= \msg -> return msg
+postProcess "init" args = performInit >>= return
 postProcess "clone" args = do
    if args == [] then return "fatal: You must specify a repository to clone."
-   else performClone (args !! 0) >>= \msg -> return msg
+   else performClone (args !! 0) >>= return
 postProcess "add" args = do
    if args == [] then return "Nothing specified, nothing added."
-   else performAdd (args !! 0) >>= \msg -> return msg
+   else performAdd (args !! 0) >>= return
 postProcess "remove" args = do
    if args == [] then return "Nothing specified, nothing removed."
-   else performRemove (args !! 0) >>= \msg -> return msg
-postProcess "status" _ = performStatus >>= \msg -> return msg
-postProcess "heads" _ = performHeads >>= \msg -> return msg
+   else performRemove (args !! 0) >>= return
+postProcess "status" _ = performStatus >>= return
+postProcess "heads" _ = performHeads >>= return
 postProcess "diff" args = do
    if args == [] then return "No commits provided"
    else if (length args) == 1 then return "No second commit to diff against"
-   else do performDiff (args !! 0) (args !! 1) >>= \msg -> return msg
-postProcess "log" args = performLog >>= \msg -> return msg
+   else do performDiff (args !! 0) (args !! 1) >>= return
+postProcess "log" args = performLog >>= return
 postProcess "checkout" args = do
    if args == [] then return "No commit id provided to checkout"
-   else performCheckout (args !! 0) >>= \msg -> return msg
+   else performCheckout (args !! 0) >>= return
 postProcess "commit" args = do
    if args == [] then return "No commit message provided"
-   else performCommit (args !! 0) >>= \msg -> return msg
+   else performCommit (args !! 0) >>= return
 postProcess "cat" args = do
    if (length args) == 0 then return "No filename given, no commit id given"
    else if (length args) == 1 then return "No filename given"
-   else performCat (args !! 0) (args !! 1) >>= \msg -> return msg
+   else performCat (args !! 0) (args !! 1) >>= return
 postProcess "pull" args = do
    if args == [] then return "There is no tracking information for the current branch."
-   else performPull (args !! 0) >>= \msg -> return msg
+   else performPull (args !! 0) >>= return
 postProcess "push" args = do
    if args == [] then return "fatal: No configured push destination."
-   else performPush (args !! 0) >>= \msg -> return msg
+   else performPush (args !! 0) >>= return
 
 parse :: [String] -> IO String
 parse [] = do return "usage: dvcs <command> [<args>]. See 'dvcs help'"
 parse (command: res) = do
-    if (command `elem` validCommands) then postProcess command res >>= \msg -> return msg
+    if (command `elem` validCommands) then postProcess command res >>= return
     else return ("dvcs: " ++ command ++ " is not a dvcs command. See 'dvcs help’")

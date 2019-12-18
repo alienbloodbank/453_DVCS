@@ -15,13 +15,12 @@ performLog = do
     commit_head <- getHEAD
     if commit_head == (CommitID "root") then return "fatal: no commits in current repository."
     else do
-      commit_list <- getUpToHead
-      let com_list = tail commit_list
+      history <- (reverse . tail) <$> getUpToHead
       putStrLn "(HEAD)"
       mapM_ (\com -> do
                      commit_message <- getCommitMessage com
                      commit_date <- getCommitDate com
                      putStrLn $ "Commit: " ++ (getStr com) ++ "\n" ++
                                 "Message: " ++ commit_message ++ "\n" ++
-                                "Time: " ++ (show commit_date) ++ "\n") (reverse com_list)
+                                "Time: " ++ (show commit_date) ++ "\n") history
       return "Commit history"

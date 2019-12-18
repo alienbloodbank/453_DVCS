@@ -31,10 +31,9 @@ performCommit msg = do
     mapM_ (\x -> copyFile (x) (commit_path ++ "/" ++ x)) trackedFiles
     return "Finished merge commit"
   else do
-  cleanTrackedSet -- remove files from TS if not in CD
-  trackedFiles <- getTrackedSet
-  if trackedFiles == []
-    then return "Nothing to commit: tracked set empty or tracked file(s) not in current directory."
+    cleanTrackedSet -- remove files from TS if not in CD
+    trackedFiles <- getTrackedSet
+    if trackedFiles == [] then return "Nothing to commit: tracked set empty or tracked file(s) not in current directory."
     else do
       cleanTrackedSet -- remove files from TS if not in CD
       trackedFiles <- getTrackedSet

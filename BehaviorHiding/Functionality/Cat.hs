@@ -15,6 +15,4 @@ performCat revid file = do
     let commit_path = commitPath (CommitID revid)
     isPath <- doesPathExist commit_path
     if not(isPath) then return "fatal: invalid commit id."
-    else do
-      cur_file <- getCommitFile (CommitID revid) file
-      return cur_file
+    else getCommitFile (CommitID revid) file >>= return
