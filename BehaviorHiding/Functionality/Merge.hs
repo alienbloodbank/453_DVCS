@@ -5,7 +5,8 @@ import System.Directory (withCurrentDirectory,
                          getCurrentDirectory,
                          doesFileExist,
                          copyFile,
-                         createDirectoryIfMissing)
+                         createDirectoryIfMissing,
+                         doesDirectoryExist)
 
 import Data.List
 import Data.List.Split
@@ -45,7 +46,7 @@ mergePull = do
    else do
       mrca_id <- getMRCA
       hid <- getHEAD
-      remote_coms <- getUpToRemoteHeadRecursive [mrca_id] >>= return . tail
+      remote_coms <- getUpToRemoteHeadRecursive [mrca_id] >>= filterM (\f -> doesDirectoryExist (remoteLoc ++ "/" ++ objectPath ++ "/" ++ (getStr f))) . tail
       if hid == mrca_id then do
          -- Fast Forward merge
          if remote_coms == [] then return "Everything up-to-date"
@@ -175,7 +176,7 @@ mergePush = do
       rhid <- getRemoteHEAD
       if rhid == mrca_id then do
          -- Fast Forward merge
-         coms <- getUpToHeadRecursive [mrca_id] >>= return . tail
+         coms <- getUpToHeadRecursive [mrca_id] >>= filterM (\f -> doesDirectoryExist (objectPath ++ "/" ++ (getStr f))) . tail
          if coms == [] then return "Everything up-to-date"
          else do
            -- copying the local snapshots to the remote repo
@@ -183,7 +184,7 @@ mergePush = do
            -- update parents and children
            mrca_new_childs <- getCommitChilds mrca_id
 
-           mapM_ (\c -> addRemoteCommitChilds mrca_id [c]) mrca_new_childs
+           mapM_ (\c -> addRemoteCommitChilds rhid [c]) mrca_new_childs
 
            trackedFiles <- getRemoteTrackedSet
 

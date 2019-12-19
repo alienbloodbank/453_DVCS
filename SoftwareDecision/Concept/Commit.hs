@@ -33,6 +33,7 @@ import GHC.Generics
 import qualified Data.ByteString.Lazy as B
 import SoftwareDecision.Concept.MetaOrganization
 import Test.RandomStrings (randomString, onlyAlphaNum, randomASCII)
+import Control.Monad
 
 -- for metadata
 newtype CommitID = CommitID {getStr :: String} deriving (Generic, Show, Eq, Ord)
@@ -131,10 +132,12 @@ setCommitParentsWithPath fp cids = do
     B.writeFile fp (encode new)
 
 getCommitChilds :: CommitID -> IO [CommitID]
-getCommitChilds cid = getCommitChildsWithPath (commitMetaPath cid)
+getCommitChilds cid = getCommitChildsWithPath (commitMetaPath cid) >>=
+  filterM (\f -> doesDirectoryExist (objectPath ++ "/" ++ (getStr f)))
 
 getCommitParents :: CommitID -> IO [CommitID]
-getCommitParents cid = getCommitParentsWithPath (commitMetaPath cid)
+getCommitParents cid = getCommitParentsWithPath (commitMetaPath cid) >>=
+  filterM (\f -> doesDirectoryExist (objectPath ++ "/" ++ (getStr f)))
 
 getCommitFile :: CommitID -> String -> IO String
 getCommitFile cid fp = readFile $ (commitPath cid) ++ "/" ++ fp

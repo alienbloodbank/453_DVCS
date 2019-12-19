@@ -126,10 +126,12 @@ getRemoteTrackedSet = do
    return files
 
 getRemoteCommitChilds :: CommitID -> IO [CommitID]
-getRemoteCommitChilds cid = getCommitChildsWithPath $ remoteCommitMetaPath cid
+getRemoteCommitChilds cid = (getCommitChildsWithPath $ remoteCommitMetaPath cid) >>=
+  filterM (\f -> doesDirectoryExist (remoteLoc ++ "/" ++ objectPath ++ "/" ++ (getStr f)))
 
 getRemoteCommitParents :: CommitID -> IO [CommitID]
-getRemoteCommitParents cid = getCommitParentsWithPath $ remoteCommitMetaPath cid
+getRemoteCommitParents cid = (getCommitParentsWithPath $ remoteCommitMetaPath cid) >>=
+  filterM (\f -> doesDirectoryExist (remoteLoc ++ "/" ++ objectPath ++ "/" ++ (getStr f)))
 
 -- only for testing
 setRemoteHEAD :: CommitID -> IO ()
@@ -254,7 +256,7 @@ getUpToRemoteHeadRecursive lst = do
 
 getMRCA :: IO CommitID
 getMRCA = do
-   localHistory <- getUpToHead
-   remoteHistory <- getUpToRemoteHead
+   localHistory <- getUpToHead >>= filterM (\f -> doesDirectoryExist (objectPath ++ "/" ++ (getStr f)))
+   remoteHistory <- getUpToRemoteHead >>= filterM (\f -> doesDirectoryExist (remoteLoc ++ "/" ++ objectPath ++ "/" ++ (getStr f)))
    let mrca = last $ intersect localHistory remoteHistory
    return mrca
