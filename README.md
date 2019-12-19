@@ -30,7 +30,7 @@ see the `.pdf` and `.png` files in the directory Group Discussion; it includes n
         In that case run 'make clean' and then run 'make'.
         Running 'make clean' also removes the .dvcs folder.
 
-### Running Examples:
+### Usage:
         (Remember to give absolute path to the dvcs binary if testing in a different folder)
         - ./dvcs init
         - ./dvcs add <file> # Only adds text files!
@@ -45,5 +45,16 @@ see the `.pdf` and `.png` files in the directory Group Discussion; it includes n
         - ./dvcs checkout <commit_id>
         - ./dvcs pull <path>
         - ./dvcs push <path>
+        
+### Examples:
+        - ./dvcs clone /path/to/repository
+        - ./dvcs clone username@login.creds:path/to/repo
+        - ./dvcs commit "commit message"
+        - ./dvcs checkout H4v1ngFUn
+        - ./dvcs checkout # goes to leaf
+        - ./dvcs cat h3L7Y3aH test.txt
+        - ./dvcs diff h3L7Y3aH H4v1ngFUn
+        - ./dvcs push /path/to/local/repo
+        - ./dvcs push username@login.creds:/path/to/repo
         
       
