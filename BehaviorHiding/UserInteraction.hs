@@ -51,8 +51,8 @@ postProcess "status" _ = performStatus >>= return
 postProcess "heads" _ = performHeads >>= return
 postProcess "diff" args = do
    if args == [] then return "No commits provided"
-   else if (length args) == 1 then performDiff (args !! 0) "LEAF" >>= return
-   else do performDiff (args !! 0) (args !! 1) >>= return
+   else if (length args) == 1 then return "No second commit to diff against"
+   else performDiff (args !! 0) (args !! 1) >>= return
 postProcess "log" args = performLog >>= return
 postProcess "checkout" args = do
    if args == [] then performCheckout "LEAF" >>= return
