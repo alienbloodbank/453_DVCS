@@ -24,9 +24,12 @@ performCheckout revid = do
   if not(doesExist) then return "fatal: not a dvcs repository .dvcs"
   else if isLocked then return "fatal: Please resolve conflicts and then commit them"
   else do
-    let commit_path = commitPath (CommitID revid)
-    isPath <- doesPathExist commit_path
-    if not(isPath) then return "fatal: invalid commit id."
+    chead <- if revid == "LEAF" then getLocalLeaf else return (CommitID revid)
+    let commit_path = commitPath chead
+    isPath <- (&&) <$> (return $ chead /= CommitID "root") <*> doesPathExist commit_path
+    if not(isPath) then do
+       if (revid == "LEAF") then return "fatal: no commits in current repository."
+       else return $ "fatal: invalid commit id: " ++ revid
     else do
       isUnStashed <- checkUnstashed
       if isUnStashed then return "error: Please commit your changes or revert them before you checkout"
@@ -43,6 +46,6 @@ performCheckout revid = do
                                             mapM_ (\x -> do
                                                           createDirectoryIfMissing True (cwd ++ "/" ++ (intercalate "/" $ init $ splitOn "/" x))
                                                           copyFile (x) (cwd ++ "/" ++ x)) files_in_rev
-        mapM_ (\x -> TS.addFile x) files_in_rev
-        setHEAD (CommitID revid)
-        return ("Head successfully changed to " ++ revid)
+        mapM_ TS.addFile files_in_rev
+        setHEAD chead
+        return ("Head successfully changed to " ++ (getStr chead))

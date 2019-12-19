@@ -5,6 +5,8 @@ import System.Directory(doesDirectoryExist)
 import SoftwareDecision.Concept.Commit
 import SoftwareDecision.Concept.Repo
 
+import Control.Monad.ListM
+
 performLog :: IO String
 performLog = do
   doesExist <- isRepo
@@ -15,7 +17,7 @@ performLog = do
     commit_head <- getHEAD
     if commit_head == (CommitID "root") then return "fatal: no commits in current repository."
     else do
-      history <- (reverse . tail) <$> getUpToHead
+      history <- init <$> (getUpToRootRecursive [commit_head] >>= sortByM (\x y -> compare <$> (getCommitDate y) <*> (getCommitDate x)))
       putStrLn "(HEAD)"
       mapM_ (\com -> do
                      commit_message <- getCommitMessage com

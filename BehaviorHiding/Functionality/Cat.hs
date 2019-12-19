@@ -12,7 +12,8 @@ performCat revid file = do
   if not(doesExist) then return "fatal: not a dvcs repository .dvcs"
   else if isLocked then return "fatal: Please resolve conflicts and then commit them"
   else do
-    let commit_path = commitPath (CommitID revid)
-    isPath <- doesPathExist commit_path
-    if not(isPath) then return "fatal: invalid commit id."
-    else getCommitFile (CommitID revid) file >>= return
+    chead <- if revid == "LEAF" then getLocalLeaf else return (CommitID revid)
+    let commit_path = commitPath chead
+    isPath <- (&&) <$> (return $ chead /= CommitID "root") <*> doesPathExist commit_path
+    if not(isPath) then return $ "fatal: invalid commit id."
+    else getCommitFile chead file >>= return

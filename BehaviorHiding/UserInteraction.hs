@@ -34,7 +34,7 @@ postProcess "help" _ = do
           "- ./dvcs log\n" ++
           "- ./dvcs diff <commit_id1> <commit_id2>\n" ++
           "- ./dvcs cat <commit_id> <file>\n" ++
-          "- ./dvcs checkout <commit_id>\n" ++
+          "- ./dvcs checkout [<commit_id>]\n" ++
           "- ./dvcs pull <path>\n" ++
           "- ./dvcs push <path>\n"
 postProcess "init" args = performInit >>= return
@@ -51,11 +51,11 @@ postProcess "status" _ = performStatus >>= return
 postProcess "heads" _ = performHeads >>= return
 postProcess "diff" args = do
    if args == [] then return "No commits provided"
-   else if (length args) == 1 then return "No second commit to diff against"
+   else if (length args) == 1 then performDiff (args !! 0) "LEAF" >>= return
    else do performDiff (args !! 0) (args !! 1) >>= return
 postProcess "log" args = performLog >>= return
 postProcess "checkout" args = do
-   if args == [] then return "No commit id provided to checkout"
+   if args == [] then performCheckout "LEAF" >>= return
    else performCheckout (args !! 0) >>= return
 postProcess "commit" args = do
    if args == [] then return "No commit message provided"

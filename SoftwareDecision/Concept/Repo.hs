@@ -4,7 +4,7 @@ module SoftwareDecision.Concept.Repo(RepoMetadata(..), createRepo, isRepo,
   RepoPath(..), getMRCA, copyRepo, getRemoteTrackedSet, getRemoteCommitChilds,
   getRemoteCommitParents, setHEAD, getUpToHead, getUpToRemoteHeadRecursive, remoteCommitPath,
   getUpToHeadRecursive, setRemoteCommitChilds, setRemoteCommitParents, setRemoteHEAD,
-  addRemoteCommitChilds, addRemoteCommitParents) where
+  addRemoteCommitChilds, addRemoteCommitParents, getUpToRootRecursive) where
 
 import GHC.Generics
 import Data.Aeson
@@ -208,6 +208,24 @@ getUpToHeadRecursive lst = do
             return result
       else do -- more than one child
         result <- foldM (\acc x -> getUpToHeadRecursive $ acc ++ [x]) lst childs
+        return result
+
+getUpToRootRecursive :: [CommitID] -> IO [CommitID]
+getUpToRootRecursive lst = do
+   let cid = last lst
+   parents <- getCommitParents cid
+   if parents == []
+    then return lst
+   else do
+    if length parents == 1
+      then do
+        if elem (parents !! 0) lst
+          then return lst
+          else do
+            result <- getUpToRootRecursive $ lst ++ parents
+            return result
+      else do
+        result <- foldM (\acc x -> getUpToRootRecursive $ acc ++ [x]) lst parents
         return result
 
 getUpToRemoteHead :: IO [CommitID]
