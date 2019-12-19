@@ -183,7 +183,7 @@ mergePush = do
            -- update parents and children
            mrca_new_childs <- getCommitChilds mrca_id
 
-           mapM_ (\c -> addRemoteCommitChilds rhid [c]) mrca_new_childs
+           mapM_ (\c -> addRemoteCommitChilds mrca_id [c]) mrca_new_childs
 
            trackedFiles <- getRemoteTrackedSet
 

@@ -25,8 +25,8 @@ performDiff revid1 revid2 = do
         let path2 = commitPath (CommitID revid2)
         isPath1 <- doesPathExist path1
         isPath2 <- doesPathExist path2
-        if revid1 == "root" || not(isPath1) then return ("fatal: invalid commit id." ++ revid1)
-        else if revid2 == "root" || not(isPath2) then return ("fatal: invalid commit id." ++ revid2)
+        if revid1 == "root" || not(isPath1) then return ("fatal: invalid commit id. " ++ revid1)
+        else if revid2 == "root" || not(isPath2) then return ("fatal: invalid commit id. " ++ revid2)
           else do
             files1 <- listDirectoryRecursive path1 >>= return . filter (/= commitMetaName)
             files2 <- listDirectoryRecursive path2 >>= return . filter (/= commitMetaName)
