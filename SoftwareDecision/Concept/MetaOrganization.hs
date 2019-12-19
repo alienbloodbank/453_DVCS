@@ -1,13 +1,13 @@
 module SoftwareDecision.Concept.MetaOrganization (
-dvcsName, 
-historyPath, 
-remoteRepoMetaPath, 
-remoteLoc, 
-tempPath, 
-dvcsPath, 
-repoMetaPath, 
-objectRelativePath, 
-objectPath, 
+dvcsName,
+historyPath,
+remoteRepoMetaPath,
+remoteLoc,
+tempPath,
+dvcsPath,
+repoMetaPath,
+objectRelativePath,
+objectPath,
 metaRelativePath,
 metaPath) where
 
@@ -24,9 +24,9 @@ metaRelativePath = "info"
 metaPath = "." ++ dvcsName ++ "/" ++ metaRelativePath
 
 tempPath = "./." ++ dvcsName ++ "/temp"
-remoteLoc = "./." ++ dvcsName ++ "/temp/remote"
+remoteLoc = "./." ++ dvcsName ++ "/temp/remote__"
 
 remoteRepoMetaPath = remoteLoc ++ "/" ++ repoMetaPath
 
--- we can also store the linked list in a separate file 
+-- we can also store the linked list in a separate file
 historyPath = metaPath ++ "/history"
