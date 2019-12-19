@@ -29,7 +29,7 @@ performCheckout revid = do
     isPath <- (&&) <$> (return $ chead /= CommitID "root") <*> doesPathExist commit_path
     if not(isPath) then do
        if (revid == "LEAF") then return "fatal: no commits in current repository."
-       else return $ "fatal: invalid commit id: " ++ revid
+       else return $ "fatal: invalid commit id."
     else do
       isUnStashed <- checkUnstashed
       if isUnStashed then return "error: Please commit your changes or revert them before you checkout"

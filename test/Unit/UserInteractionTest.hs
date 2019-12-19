@@ -14,7 +14,10 @@ import BehaviorHiding.Functionality.Remove
 import BehaviorHiding.Functionality.Status
 import BehaviorHiding.UserInteraction
 
+import System.Directory (getCurrentDirectory)
+
 main = do
+    cd <- getCurrentDirectory
     -- begin testing
 
     -- parse
@@ -36,21 +39,21 @@ main = do
           "- ./dvcs log\n" ++
           "- ./dvcs diff <commit_id1> <commit_id2>\n" ++
           "- ./dvcs cat <commit_id> <file>\n" ++
-          "- ./dvcs checkout <commit_id>\n" ++
+          "- ./dvcs checkout [<commit_id>]\n" ++
           "- ./dvcs pull <path>\n" ++
           "- ./dvcs push <path>\n") ~=? msg
     msg <- parse ["clone"]
     let test2_2 = "test2_2" ~: "postProcess: clone" ~: "fatal: You must specify a repository to clone." ~=? msg
+    msg <- parse ["init"]
+    let test2_3 = "test2_3" ~: "postProcess: init" ~: ("Initialized repository in " ++ cd)~=? msg
     msg <- parse ["add"]
-    let test2_3 = "test2_3" ~: "postProcess: add" ~: "Nothing specified, nothing added." ~=? msg
+    let test2_4 = "test2_4" ~: "postProcess: add" ~: "Nothing specified, nothing added." ~=? msg
     msg <- parse ["remove"]
-    let test2_4 = "test2_4" ~: "postProcess: remove" ~: "Nothing specified, nothing removed." ~=? msg
-    msg <- parse ["diff"]
-    let test2_5 = "test2_5" ~: "postProcess: diff" ~: "No commits provided" ~=? msg
+    let test2_5 = "test2_5" ~: "postProcess: remove" ~: "Nothing specified, nothing removed." ~=? msg
     msg <- parse ["diff", "kjbhjfk"]
     let test2_6 = "test2_6" ~: "postProcess: diff" ~: "No second commit to diff against" ~=? msg
-    msg <- parse ["checkout"]
-    let test2_7 = "test2_7" ~: "postProcess: checkout" ~: "No commit id provided to checkout" ~=? msg
+    msg <- parse ["checkout", "sdfsdfd"]
+    let test2_7 = "test2_7" ~: "postProcess: checkout" ~: "fatal: invalid commit id." ~=? msg
     msg <- parse ["commit"]
     let test2_8 = "test2_8" ~: "postProcess: commit" ~: "No commit message provided" ~=? msg
     msg <- parse ["cat"]

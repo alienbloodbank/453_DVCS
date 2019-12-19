@@ -56,5 +56,6 @@ see the `.pdf` and `.png` files in the directory Group Discussion; it includes n
         - ./dvcs diff h3L7Y3aH H4v1ngFUn
         - ./dvcs push /path/to/local/repo
         - ./dvcs push username@login.creds:/path/to/repo
-        
-      
+        - ./dvcs pull /path/to/local/repo
+        - ./dvcs pull username@login.creds:/path/to/repo
+
